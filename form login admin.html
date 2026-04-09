@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login</title>
+
+    <!-- Hubungkan CSS -->
+    <link rel="stylesheet" href="form_login.CSS">
+</head>
+<body>
+
+<div class="container">
+    <h2>Login</h2>
+    
+    <div class="input-group">
+        <label>Email</label>
+        <input type="email" id="email" placeholder="Masukkan email">
+    </div>
+
+    <div class="input-group">
+        <label>Password</label>
+        <input type="password" id="password" placeholder="Masukkan password">
+        <div class="show-password" onclick="togglePassword()">Tampilkan Password</div>
+    </div>
+
+    <button onclick="login()">Login</button>
+
+    <div class="error" id="errorMsg"></div>
+</div>
+
+<!-- Hubungkan JavaScript -->
+<script src="script.js"></script>
+
+</body>
+</html>
