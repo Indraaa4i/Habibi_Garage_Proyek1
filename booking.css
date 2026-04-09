@@ -1,0 +1,93 @@
+body {
+  font-family: Arial, sans-serif;
+  background: #afcdfa;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+}
+
+legend{
+  text-align: center;
+  color: #333;
+  font-family: 'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif;
+}
+
+form {
+  background: #fff;
+  padding: 25px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  width: 500px;
+}
+
+label {
+  display: block;
+  margin-top: 12px;
+  font-weight: bold;
+  color: #444;
+}
+
+input[type="text"],
+input[type="email"],
+input[type="tel"],
+input[type="date"],
+input[type="password"],
+textarea {
+  width: 100%;
+  padding: 8px;
+  margin-top: 6px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+
+textarea {
+  resize: vertical;
+}
+
+select {
+  width: 100%;
+  padding: 8px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  margin-top: 6px;
+}
+
+.radio-group {
+    display: flex;
+    margin-top: 6px;
+}
+
+.radio-group input {
+  margin-right: 6px;
+}
+
+.buttons {
+  margin-top: 20px;
+  text-align: center;
+}
+
+input[type="submit"],
+input[type="reset"] {
+  background: #4CAF50;
+  color: white;
+  border: none;
+  padding: 10px 18px;
+  margin: 5px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+input[type="reset"] {
+  background: #f44336;
+}
+
+input[type="submit"]:hover {
+  background: #45a049;
+}
+
+input[type="reset"]:hover {
+  background: #d32f2f;
+}
