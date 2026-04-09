@@ -1,0 +1,109 @@
+body, html {
+    height: 100%;
+    margin: 0;
+    font-family: 'Poppins', sans-serif;
+    overflow-x: hidden;
+}
+
+.full-height {
+    min-height: 100vh;
+}
+
+.left-section {
+    background-color: #0d1117;
+    color: white;
+}
+
+.right-section {
+    background-color: #0d1117;
+}
+
+.content-wrapper {
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+.form-wrapper {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.garage-logo {
+    height: 120px;
+    width: auto;
+    object-fit: contain;
+}
+
+.call-to-action {
+    font-weight: 700;
+    font-size: 4rem;
+    line-height: 1;
+    color: white;
+}
+
+.description {
+    font-size: 1.2rem;
+    color: #94a3b8;
+}
+
+.form-label {
+    color: #f8fafc;
+    font-size: 0.95rem;
+    margin-bottom: 8px;
+    display: block;
+}
+
+.form-control, .form-select {
+    background-color: white !important;
+    border-radius: 12px;
+    padding: 14px 18px;
+    border: none;
+    font-size: 1rem;
+    color: #1e293b;
+}
+
+.form-control::placeholder {
+    color: #cbd5e1;
+}
+
+.btn-payment {
+    background-color: #0066ff;
+    color: white;
+    border-radius: 12px;
+    font-size: 1.1rem;
+    transition: all 0.3s ease;
+    border: none;
+}
+
+.btn-payment:hover {
+    background-color: #0052cc;
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(0, 102, 255, 0.3);
+}
+
+@media (max-width: 991px) {
+    .left-section {
+        padding: 30px 20px !important;
+    }
+    
+    .header-mobile-flex {
+        flex-direction: row !important; /* Memaksa sejajar ke samping */
+        justify-content: flex-start;
+        text-align: left;
+    }
+
+    .garage-logo {
+        height: 50px; /* Ukuran logo lebih kecil di HP */
+        margin-bottom: 0 !important;
+    }
+
+    .call-to-action {
+        font-size: 1.8rem; /* Ukuran teks lebih kecil agar muat semata */
+        line-height: 1.2;
+    }
+
+    .description {
+        font-size: 0.9rem;
+        line-height: 1.3;
+    }
+}

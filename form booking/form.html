@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Habibi Garage - Full Screen Booking</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="form.css">
+</head>
+<body>
+
+<div class="container-fluid p-0">
+    <div class="row g-0 full-height">
+        
+    <div class="col-lg-5 left-section d-flex flex-column justify-content-center p-4 p-md-5">
+        <div class="content-wrapper">
+            <div class="header-mobile-flex d-flex align-items-center gap-3 mb-4">
+                <img src="img/WhatsApp_Image_2026-04-09_at_09.31.19-removebg-preview.png" alt="Habibi Garage" class="garage-logo">
+            
+                <div class="cta-text-wrapper">
+                    <h1 class="call-to-action mb-0">Atur Jadwalmu</h1>
+                    <p class="description mb-0 d-none d-md-block">Pesan jadwal Anda dalam sekejap</p>
+                </div>
+            </div>
+        
+            <p class="description d-md-none">Pesan jadwal Anda dalam sekejap</p>
+        </div>
+    </div>
+        
+        <div class="col-lg-7 right-section d-flex align-items-center p-4 p-md-5">
+            <div class="form-wrapper w-100">
+                <form id="bookingForm" class="row g-4">
+                    <div class="col-md-7">
+                        <label class="form-label">Nama Lengkap</label>
+                        <input type="text" name="nama" class="form-control shadow-sm" placeholder="Contoh: Ali Indrawijaya" required>
+                    </div>
+                    <div class="col-md-5">
+                        <label class="form-label">No. Telepon</label>
+                        <input type="tel" name="telepon" class="form-control shadow-sm" placeholder="0812xxxx" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Plat Nomor</label>
+                        <input type="text" name="plat" class="form-control shadow-sm" placeholder="contoh: B 1234 ABC" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Jenis Mobil</label>
+                        <input type="text" name="jenis" class="form-control shadow-sm" placeholder="contoh:Mazda 3" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Warna Mobil</label>
+                        <input type="text" name="warna" class="form-control shadow-sm" placeholder="contoh: hitam" required>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Pilih Layanan Utama</label>
+                        <select name="layanan" class="form-select shadow-sm" required>
+                            <option value="" selected disabled>Pilih paket cuci...</option>
+                            <option value="reguler">Cuci Reguler (Body + Interior)</option>
+                            <option value="wax">Cuci + Wax (Premium Polish)</option>
+                            <option value="detailing">Detailing & Coating</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Tanggal Kedatangan</label>
+                        <input type="date" id="bookingDate" name="tanggal" class="form-control shadow-sm" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Pilih Jam</label>
+                        <select name="jam" class="form-select shadow-sm" required>
+                            <option value="" selected disabled>Pilih waktu...</option>
+                            <option>08:00 - 09:00</option>
+                            <option>09:00 - 10:00</option>
+                            <option>10:00 - 11:00</option>
+                        </select>
+                    </div>
+                    <div class="col-12 mt-5">
+                        <button type="submit" id="btnSubmit" class="btn btn-payment w-100 py-3 text-uppercase fw-bold">Lanjutkan Pembayaran</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="form.js"></script>
+</body>
+</html>
