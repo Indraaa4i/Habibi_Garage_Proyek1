@@ -1,0 +1,78 @@
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #0f172a; /* warna bg baru */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
+
+/* container diperbesar */
+.container {
+    background: white;
+    padding: 40px;
+    border-radius: 16px;
+    width: 400px; /* sebelumnya 300px */
+    box-shadow: 0 15px 35px rgba(0,0,0,0.4);
+}
+
+h2 {
+    text-align: center;
+    margin-bottom: 25px;
+    font-size: 26px;
+}
+
+.input-group {
+    margin-bottom: 18px;
+}
+
+.input-group label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 15px;
+}
+
+.input-group input {
+    width: 100%;
+    padding: 12px; /* diperbesar */
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    font-size: 14px;
+}
+
+.input-group input:focus {
+    border-color: #4facfe;
+    outline: none;
+}
+
+.show-password {
+    font-size: 13px;
+    margin-top: 6px;
+    cursor: pointer;
+    color: #4facfe;
+}
+
+/* tombol diperbesar */
+button {
+    width: 100%;
+    padding: 12px;
+    border: none;
+    background: #4facfe;
+    color: white;
+    font-size: 17px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+button:hover {
+    background: #00c6ff;
+}
+
+.error {
+    color: red;
+    font-size: 13px;
+    text-align: center;
+    margin-top: 12px;
+}
