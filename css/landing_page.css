@@ -103,7 +103,7 @@ nav {
 .hero-bg {
   position: absolute;
   inset: 0;
-  background: url('img/background.png') center / cover no-repeat;
+  background: url("../img/background.png") center / cover no-repeat;
   filter: brightness(0.45);
 }
 
