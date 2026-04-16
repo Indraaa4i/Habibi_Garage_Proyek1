@@ -12,26 +12,25 @@ if (!$conn) {
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     
-    $nama     = $_POST['nama'];
-    $telepon  = $_POST['telepon'];
-    $plat     = $_POST['plat'];
-    $jenis    = $_POST['jenis'];
-    $warna    = $_POST['warna'];
-    $layanan  = $_POST['layanan'];
-    $tanggal  = $_POST['tanggal'];
-    $jam      = $_POST['jam'];
+   // Ambil data dari form (sesuaikan dengan atribut 'name' di HTML)
+$nama     = $_POST['nama'];
+$telepon  = $_POST['telepon'];
+$plat     = $_POST['plat'];
+$jenis    = $_POST['jenis'];
+$warna    = $_POST['warna'];
+$layanan  = $_POST['layanan']; // Pastikan ini sesuai dengan id_paket jika itu foreign key
+$tanggal  = $_POST['tanggal'];
+$jam      = $_POST['jam'];
 
-    $sql = "INSERT INTO tabel_booking (nama, telepon, plat, jenis_mobil, warna_mobil, layanan, tanggal, jam) 
-            VALUES ('$nama', '$telepon', '$plat', '$jenis', '$warna', '$layanan', '$tanggal', '$jam')";
+// Query yang sudah disesuaikan dengan struktur tabel 'pemesanan' di database kamu
+$sql = "INSERT INTO pemesanan (nama_pelanggan, no_telepon, plat_mobil, jenis_mobil, warna_mobil, tanggal, jam) 
+        VALUES ('$nama', '$telepon', '$plat', '$jenis', '$warna', '$tanggal', '$jam')";
 
-    if (mysqli_query($conn, $sql)) {
-
-        echo "<script>
-                alert('Booking Berhasil Disimpan!');
-                window.location.href='index.html'; 
-              </script>";
-    } else {
-        echo "Error: " . mysqli_error($conn);
-    }
+if (mysqli_query($conn, $sql)) {
+    echo "<script>
+            alert('Booking Berhasil Disimpan!');
+            window.location.href='index.html';
+          </script>";
+} else {
+    echo "Error: " . mysqli_error($conn);
 }
-?>
