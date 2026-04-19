@@ -87,18 +87,18 @@ body, html {
     }
     
     .header-mobile-flex {
-        flex-direction: row !important; /* Memaksa sejajar ke samping */
+        flex-direction: row !important; 
         justify-content: flex-start;
         text-align: left;
     }
 
     .garage-logo {
-        height: 50px; /* Ukuran logo lebih kecil di HP */
+        height: 50px; 
         margin-bottom: 0 !important;
     }
 
     .call-to-action {
-        font-size: 1.8rem; /* Ukuran teks lebih kecil agar muat semata */
+        font-size: 1.8rem; 
         line-height: 1.2;
     }
 
