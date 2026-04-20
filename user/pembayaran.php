@@ -1,3 +1,24 @@
+<?php
+include 'koneksi.php';
+$id_pemesanan = $_GET['id'];
+
+$sql = "SELECT p.*, l.nama_paket, l.harga 
+        FROM pemesanan p 
+        JOIN paket_layanan l ON p.id_paket = l.id_paket 
+        WHERE p.id_pemesanan = '$id_pemesanan'";
+
+$query = mysqli_query($conn, $sql);
+
+if (!$query) {
+    // Kodingan ini akan kasih tau kamu kolom mana yang salah
+    die("Gagal Query: " . mysqli_error($conn)); 
+}
+
+$data = mysqli_fetch_array($query);
+?>
+
+
+
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -20,7 +41,7 @@
         }
         .info-box {
             background-color: #161b22;
-            border-left: 5px solid #0066ff; /* Garis aksen biru */
+            border-left: 5px solid #0066ff;
             padding: 20px;
             border-radius: 12px;
         }
@@ -35,7 +56,6 @@
             border-color: #0066ff;
             background-color: rgba(0, 102, 255, 0.05);
         }
-        /* Memastikan Button Berwarna Biru */
         .btn-payment {
             background-color: #0066ff !important;
             color: white !important;

@@ -26,5 +26,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         
         echo "Gagal menyimpan data: " . mysqli_error($conn);
     }
-}
-?>
+    if (mysqli_query($conn, $sql)) {
+    
+    $id_terakhir = mysqli_insert_id($conn);
+    
+    
+    header("Location: pembayaran.php?id=" . $id_terakhir);
+    exit();
+    }
+}   

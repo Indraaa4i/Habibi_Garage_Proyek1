@@ -1,5 +1,5 @@
 <?php 
-include 'koneksi.php'; // 1. Pastikan koneksi dipanggil di paling atas
+include 'koneksi.php'; 
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -61,14 +61,14 @@ include 'koneksi.php'; // 1. Pastikan koneksi dipanggil di paling atas
                             <option value="" disabled>Pilih paket cuci...</option>
                             
                             <?php
-                            // Cek apakah ada ID paket kiriman dari menu.php
+                            
                             $id_pilihan = isset($_GET['id_paket']) ? $_GET['id_paket'] : '';
                             
-                            // Ambil data dari tabel paket_layanan
+                            
                             $query_paket = mysqli_query($conn, "SELECT * FROM paket_layanan");
                             
                             while($p = mysqli_fetch_array($query_paket)) {
-                                // Jika ID paket di database sama dengan ID dari menu, kasih tanda 'selected'
+                                
                                 $selected = ($p['id_paket'] == $id_pilihan) ? 'selected' : '';
                                 
                                 echo "<option value='$p[id_paket]' $selected>
@@ -95,9 +95,9 @@ include 'koneksi.php'; // 1. Pastikan koneksi dipanggil di paling atas
                             <option>15:00 - 16:00</option>
                         </select>
                     </div>
-                    <div class="col-12 mt-5">
+                    <form action="form.php" method="POST"> 
                         <button type="submit" id="btnSubmit" class="btn btn-payment w-100 py-3 text-uppercase fw-bold">Lanjutkan Pembayaran</button>
-                    </div>
+                    </form>
                 </form>
             </div>
         </div>
