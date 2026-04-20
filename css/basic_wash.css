@@ -1,62 +1,161 @@
-.services {
-  background: #0F172A;
-  padding: 50px 20px;
-  color: white;
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
 }
 
-.services h2 {
-  text-align: center;
-  margin-bottom: 40px;
+body {
+    background: linear-gradient(135deg, #0F172A, #020617);
+    font-family: 'Segoe UI', sans-serif;
+    color: white;
 }
 
-.service-list {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
+/* Judul */
+.title {
+    text-align: center;
+    margin: 30px 0;
+    color: #00F6FF;
+    font-size: 28px;
+    letter-spacing: 1px;
 }
 
-.service-card {
-  display: flex;
-  background: #1e293b;
-  border-radius: 15px;
-  overflow: hidden;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.3);
-  transition: 0.3s;
+/* Container */
+.container {
+    padding: 20px;
 }
 
-.service-card:hover {
-  transform: scale(1.02);
+/* Kategori */
+.menu-group {
+    margin-bottom: 50px;
 }
 
-.service-card img {
-  width: 250px;
-  object-fit: cover;
+.menu-group h2 {
+    color: #00F6FF;
+    margin-bottom: 15px;
+    border-left: 4px solid #00F6FF;
+    padding-left: 10px;
 }
 
-.service-content {
-  padding: 20px;
-  flex: 1;
+/* Scroll horizontal */
+.menu-row {
+    display: flex;
+    gap: 20px;
+    overflow-x: auto;
+    scroll-behavior: smooth;
+    padding-bottom: 10px;
 }
 
-.service-content h3 {
-  margin-bottom: 10px;
+/* Scrollbar custom */
+.menu-row::-webkit-scrollbar {
+    height: 8px;
 }
 
-.service-content ul {
-  margin: 10px 0;
-  padding-left: 20px;
+.menu-row::-webkit-scrollbar-track {
+    background: #111827;
+    border-radius: 10px;
 }
 
-.service-content button {
-  margin-top: 10px;
-  padding: 8px 15px;
-  border: none;
-  background: #38bdf8;
-  color: white;
-  border-radius: 8px;
-  cursor: pointer;
+.menu-row::-webkit-scrollbar-thumb {
+    background: #00F6FF;
+    border-radius: 10px;
 }
 
-.service-content button:hover {
-  background: #0ea5e9;
+/* Card */
+.menu-item {
+    min-width: 320px;
+    display: flex;
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    border-radius: 15px;
+    overflow: hidden;
+    border: 1px solid rgba(0, 246, 255, 0.2);
+    transition: 0.3s ease;
+    position: relative;
+}
+
+/* Glow efek */
+.menu-item::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 15px;
+    background: linear-gradient(120deg, transparent, rgba(0,246,255,0.3), transparent);
+    opacity: 0;
+    transition: 0.4s;
+}
+
+/* Hover */
+.menu-item:hover {
+    transform: translateY(-5px) scale(1.03);
+    box-shadow: 0 10px 25px rgba(0,246,255,0.2);
+}
+
+.menu-item:hover::before {
+    opacity: 1;
+}
+
+/* Gambar */
+.menu-item img {
+    width: 130px;
+    height: 130px;
+    object-fit: cover;
+}
+
+/* Text */
+.text {
+    padding: 12px;
+    flex: 1;
+}
+
+.text h3 {
+    margin-bottom: 5px;
+    font-size: 16px;
+}
+
+.text p {
+    font-size: 13px;
+    color: #cbd5f5;
+}
+
+/* List */
+.text ul {
+    margin: 6px 0;
+    padding-left: 15px;
+    font-size: 12px;
+}
+
+.text ul li {
+    margin-bottom: 2px;
+}
+
+/* Harga */
+.price {
+    color: #00F6FF;
+    font-weight: bold;
+    margin: 6px 0;
+}
+
+/* Button */
+button {
+    background: linear-gradient(45deg, #00F6FF, #00c8d6);
+    border: none;
+    padding: 7px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    color: #000;
+    transition: 0.3s;
+}
+
+/* Hover button */
+button:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 10px #00F6FF;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .menu-item {
+        min-width: 260px;
+    }
 }
