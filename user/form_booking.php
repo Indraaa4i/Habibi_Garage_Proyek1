@@ -1,3 +1,6 @@
+<?php 
+include 'koneksi.php'; // 1. Pastikan koneksi dipanggil di paling atas
+?>
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -51,13 +54,28 @@
                         <label class="form-label">Warna Mobil</label>
                         <input type="text" name="warna" class="form-control shadow-sm" placeholder="contoh: hitam" required>
                     </div>
+
                     <div class="col-12">
                         <label class="form-label">Pilih Layanan Utama</label>
                         <select name="layanan" class="form-select shadow-sm" required>
-                            <option value="" selected disabled>Pilih paket cuci...</option>
-                            <option value="reguler">Cuci Reguler (Body + Interior)</option>
-                            <option value="wax">Cuci + Wax (Premium Polish)</option>
-                            <option value="detailing">Detailing & Coating</option>
+                            <option value="" disabled>Pilih paket cuci...</option>
+                            
+                            <?php
+                            // Cek apakah ada ID paket kiriman dari menu.php
+                            $id_pilihan = isset($_GET['id_paket']) ? $_GET['id_paket'] : '';
+                            
+                            // Ambil data dari tabel paket_layanan
+                            $query_paket = mysqli_query($conn, "SELECT * FROM paket_layanan");
+                            
+                            while($p = mysqli_fetch_array($query_paket)) {
+                                // Jika ID paket di database sama dengan ID dari menu, kasih tanda 'selected'
+                                $selected = ($p['id_paket'] == $id_pilihan) ? 'selected' : '';
+                                
+                                echo "<option value='$p[id_paket]' $selected>
+                                        $p[nama_paket] - Rp " . number_format($p['harga'], 0, ',', '.') . "
+                                      </option>";
+                            }
+                            ?>
                         </select>
                     </div>
                     <div class="col-md-6">
