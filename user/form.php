@@ -1,36 +1,25 @@
 <?php
-$host = "localhost";
-$user = "root";
-$pass = "";
-$db   = "habibi_garage";
+include 'koneksi.php';
 
-$conn = mysqli_connect($host, $user, $pass, $db);
-
-if (!$conn) {
-    die("Koneksi ke database gagal: " . mysqli_connect_error());
-}
-
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
+if (isset($_POST['submit'])) {
     
-   // Ambil data dari form (sesuaikan dengan atribut 'name' di HTML)
-$nama     = $_POST['nama'];
-$telepon  = $_POST['telepon'];
-$plat     = $_POST['plat'];
-$jenis    = $_POST['jenis'];
-$warna    = $_POST['warna'];
-$layanan  = $_POST['layanan']; // Pastikan ini sesuai dengan id_paket jika itu foreign key
-$tanggal  = $_POST['tanggal'];
-$jam      = $_POST['jam'];
+    $id_paket        = $_POST['id_paket'];
+    $nama_pelanggan  = $_POST['nama_pelanggan'];
+    $plat_mobil      = $_POST['plat_mobil'];
+    $jenis_mobil     = $_POST['jenis_mobil'];
+    $warna_mobil     = $_POST['warna_mobil'];
+    $no_telepon      = $_POST['no_telepon'];
+    $tanggal         = $_POST['tanggal'];
+    $jam             = $_POST['jam'];
 
-// Query yang sudah disesuaikan dengan struktur tabel 'pemesanan' di database kamu
-$sql = "INSERT INTO pemesanan (nama_pelanggan, no_telepon, plat_mobil, jenis_mobil, warna_mobil, tanggal, jam) 
-        VALUES ('$nama', '$telepon', '$plat', '$jenis', '$warna', '$tanggal', '$jam')";
+    
+    $sql = "INSERT INTO pemesanan (id_paket, nama_pelanggan, plat_mobil, jenis_mobil, warna_mobil, no_telepon, tanggal, jam) 
+            VALUES ('$id_paket', '$nama_pelanggan', '$plat_mobil', '$jenis_mobil', '$warna_mobil', '$no_telepon', '$tanggal', '$jam')";
 
-if (mysqli_query($conn, $sql)) {
-    echo "<script>
-            alert('Booking Berhasil Disimpan!');
-            window.location.href='index.html';
-          </script>";
-} else {
-    echo "Error: " . mysqli_error($conn);
+    if (mysqli_query($conn, $sql)) {
+        echo "<script>alert('Pemesanan berhasil disimpan!'); window.location='index.php';</script>";
+    } else {
+        echo "Error: " . $sql . "<br>" . mysqli_error($conn);
+    }
 }
+?>
