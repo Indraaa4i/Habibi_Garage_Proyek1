@@ -1,7 +1,14 @@
 <?php
-$conn = mysqli_connect("localhost", "root", "", "habibi_garage");
+$host = "localhost";
+$user = "root";
+$pass = "";
+$db   = "habibi_garage"; 
 
-if (!$conn) {
-    die("Koneksi gagal: " . mysqli_connect_error());
+$conn = mysqli_connect($host, $user, $pass, $db);
+
+if ($conn) {
+    echo "Koneksi Berhasil! Database sudah terhubung.";
+} else {
+    die("Koneksi Gagal: " . mysqli_connect_error());
 }
 ?>
