@@ -1,38 +1,35 @@
 <?php 
-// 1. Pastikan koneksi.php TIDAK ADA tulisan "echo" agar tidak mengganggu redirect
 include 'koneksi.php'; 
 
-// --- LOGIKA PROSES SIMPAN ---
+// --- BAGIAN LOGIKA PHP (SIMPAN DATA) ---
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['proses_booking'])) {
     
-    // 2. Gunakan mysqli_real_escape_string untuk keamanan (mencegah SQL Injection)
+    // Ambil data dari input form
     $nama    = mysqli_real_escape_string($conn, $_POST['nama']);
     $telp    = mysqli_real_escape_string($conn, $_POST['telepon']);
     $plat    = mysqli_real_escape_string($conn, $_POST['plat']);
     $jenis   = mysqli_real_escape_string($conn, $_POST['jenis']);
     $warna   = mysqli_real_escape_string($conn, $_POST['warna']);
-    $layanan = mysqli_real_escape_string($conn, $_POST['layanan']); 
+    $id_paket = mysqli_real_escape_string($conn, $_POST['id_paket']); // ID paket dari dropdown
     $tanggal = mysqli_real_escape_string($conn, $_POST['tanggal']);
     $jam     = mysqli_real_escape_string($conn, $_POST['jam']);
 
-    // 3. Pastikan nama kolom di INSERT INTO (nama_pelanggan, no_telepon, dll) 
-    // SAMA PERSIS dengan yang ada di struktur tabel phpMyAdmin kamu.
-    $sql = "INSERT INTO pemesanan (nama_pelanggan, no_telepon, plat_mobil, jenis_mobil, warna_mobil, layanan, tanggal, jam) 
-            VALUES ('$nama', '$telp', '$plat', '$jenis', '$warna', '$layanan', '$tanggal', '$jam')";
+    // Query INSERT (Pastikan nama kolom p_pelanggan, no_telepon, dll sesuai gambar 1)
+    $sql = "INSERT INTO pemesanan (id_paket, nama_pelanggan, plat_mobil, jenis_mobil, warna_mobil, no_telepon, tanggal, jam) 
+            VALUES ('$id_paket', '$nama', '$plat', '$jenis', '$warna', '$telp', '$tanggal', '$jam')";
 
     if (mysqli_query($conn, $sql)) {
-        // 4. Ambil ID unik yang baru saja terbuat
+        // Ambil ID pemesanan yang baru saja terbuat
         $id_terakhir = mysqli_insert_id($conn);
         
-        // 5. REDIRECT: Pastikan menggunakan kutip dua (") di luar agar $id_terakhir terbaca angkanya
+        // Alihkan ke halaman pembayaran sambil membawa ID lewat URL (?id=...)
         echo "<script>
-                alert('Pemesanan Berhasil! Silakan lanjut ke pembayaran.');
+                alert('Pemesanan Berhasil!');
                 window.location.href='pembayaran.php?id=" . $id_terakhir . "';
               </script>";
         exit;
     } else {
-        // Jika gagal, tampilkan error aslinya dari database supaya kita tahu salahnya di mana
-        echo "<script>alert('Gagal menyimpan data: " . mysqli_error($conn) . "');</script>";
+        echo "<script>alert('Gagal menyimpan: " . mysqli_error($conn) . "');</script>";
     }
 }
 ?>
