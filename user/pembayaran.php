@@ -1,22 +1,32 @@
 <?php
 include 'koneksi.php';
-$id_pemesanan = $_GET['id'];
 
-$sql = "SELECT p.*, l.nama_paket, l.harga 
-        FROM pemesanan p 
-        JOIN paket_layanan l ON p.id_paket = l.id_paket 
-        WHERE p.id_pemesanan = '$id_pemesanan'";
+// Cek apakah ada ID di URL
+if (isset($_GET['id']) && !empty($_GET['id'])) {
+    $id_pemesanan = mysqli_real_escape_string($conn, $_GET['id']);
 
-$query = mysqli_query($conn, $sql);
+    // Query JOIN (Sesuaikan l.id_paket atau l.layanan sesuai tabelmu)
+    $sql = "SELECT p.*, l.nama_paket, l.harga 
+            FROM pemesanan p 
+            JOIN paket_layanan l ON p.layanan = l.id_paket 
+            WHERE p.id_pemesanan = '$id_pemesanan'";
 
-if (!$query) {
-    // Kodingan ini akan kasih tau kamu kolom mana yang salah
-    die("Gagal Query: " . mysqli_error($conn)); 
+    $query = mysqli_query($conn, $sql);
+    $data = mysqli_fetch_array($query);
+
+    // Jika ID ada di URL tapi tidak ada di database (salah ketik ID)
+    if (!$data) {
+        die("Maaf, data pesanan dengan ID tersebut tidak ditemukan.");
+    }
+} else {
+    // Jika akses langsung TANPA ID, kita kasih peringatan dulu sebelum pindah
+    echo "<script>
+            alert('Akses ditolak! Kamu harus isi form booking dulu.');
+            window.location.href='form_booking.php';
+          </script>";
+    exit;
 }
-
-$data = mysqli_fetch_array($query);
 ?>
-
 
 
 <!DOCTYPE html>

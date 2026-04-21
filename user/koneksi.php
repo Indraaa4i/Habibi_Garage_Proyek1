@@ -6,9 +6,7 @@ $db   = "habibi_garage";
 
 $conn = mysqli_connect($host, $user, $pass, $db);
 
-if ($conn) {
-    echo "Koneksi Berhasil! Database sudah terhubung.";
-} else {
-    die("Koneksi Gagal: " . mysqli_connect_error());
+if (!$conn) {
+    die("Koneksi gagal: " . mysqli_connect_error());
 }
 ?>

@@ -1,6 +1,42 @@
 <?php 
+// 1. Pastikan koneksi.php TIDAK ADA tulisan "echo" agar tidak mengganggu redirect
 include 'koneksi.php'; 
+
+// --- LOGIKA PROSES SIMPAN ---
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['proses_booking'])) {
+    
+    // 2. Gunakan mysqli_real_escape_string untuk keamanan (mencegah SQL Injection)
+    $nama    = mysqli_real_escape_string($conn, $_POST['nama']);
+    $telp    = mysqli_real_escape_string($conn, $_POST['telepon']);
+    $plat    = mysqli_real_escape_string($conn, $_POST['plat']);
+    $jenis   = mysqli_real_escape_string($conn, $_POST['jenis']);
+    $warna   = mysqli_real_escape_string($conn, $_POST['warna']);
+    $layanan = mysqli_real_escape_string($conn, $_POST['layanan']); 
+    $tanggal = mysqli_real_escape_string($conn, $_POST['tanggal']);
+    $jam     = mysqli_real_escape_string($conn, $_POST['jam']);
+
+    // 3. Pastikan nama kolom di INSERT INTO (nama_pelanggan, no_telepon, dll) 
+    // SAMA PERSIS dengan yang ada di struktur tabel phpMyAdmin kamu.
+    $sql = "INSERT INTO pemesanan (nama_pelanggan, no_telepon, plat_mobil, jenis_mobil, warna_mobil, layanan, tanggal, jam) 
+            VALUES ('$nama', '$telp', '$plat', '$jenis', '$warna', '$layanan', '$tanggal', '$jam')";
+
+    if (mysqli_query($conn, $sql)) {
+        // 4. Ambil ID unik yang baru saja terbuat
+        $id_terakhir = mysqli_insert_id($conn);
+        
+        // 5. REDIRECT: Pastikan menggunakan kutip dua (") di luar agar $id_terakhir terbaca angkanya
+        echo "<script>
+                alert('Pemesanan Berhasil! Silakan lanjut ke pembayaran.');
+                window.location.href='pembayaran.php?id=" . $id_terakhir . "';
+              </script>";
+        exit;
+    } else {
+        // Jika gagal, tampilkan error aslinya dari database supaya kita tahu salahnya di mana
+        echo "<script>alert('Gagal menyimpan data: " . mysqli_error($conn) . "');</script>";
+    }
+}
 ?>
+
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -16,24 +52,22 @@ include 'koneksi.php';
 <div class="container-fluid p-0">
     <div class="row g-0 full-height">
         
-    <div class="col-lg-5 left-section d-flex flex-column justify-content-center p-4 p-md-5">
-        <div class="content-wrapper">
-            <div class="header-mobile-flex d-flex align-items-center gap-3 mb-4">
-                <img src="../img/logo.png" alt="Habibi Garage" class="garage-logo">
-            
-                <div class="cta-text-wrapper">
-                    <h1 class="call-to-action mb-0">Atur Jadwalmu</h1>
-                    <p class="description mb-0 d-none d-md-block">Pesan jadwal Anda dalam sekejap</p>
+        <div class="col-lg-5 left-section d-flex flex-column justify-content-center p-4 p-md-5">
+            <div class="content-wrapper">
+                <div class="header-mobile-flex d-flex align-items-center gap-3 mb-4">
+                    <img src="../img/logo.png" alt="Habibi Garage" class="garage-logo">
+                    <div class="cta-text-wrapper">
+                        <h1 class="call-to-action mb-0">Atur Jadwalmu</h1>
+                        <p class="description mb-0 d-none d-md-block">Pesan jadwal Anda dalam sekejap</p>
+                    </div>
                 </div>
+                <p class="description d-md-none">Pesan jadwal Anda dalam sekejap</p>
             </div>
-        
-            <p class="description d-md-none">Pesan jadwal Anda dalam sekejap</p>
         </div>
-    </div>
         
         <div class="col-lg-7 right-section d-flex align-items-center p-4 p-md-5">
             <div class="form-wrapper w-100">
-                <form id="bookingForm" action="form.php" method="POST" class="row g-4">
+                <form id="bookingForm" action="" method="POST" class="row g-4">
                     <div class="col-md-7">
                         <label class="form-label">Nama Lengkap</label>
                         <input type="text" name="nama" class="form-control shadow-sm" placeholder="Contoh: Ali Indrawijaya" required>
@@ -44,33 +78,26 @@ include 'koneksi.php';
                     </div>
                     <div class="col-md-4">
                         <label class="form-label">Plat Nomor</label>
-                        <input type="text" name="plat" class="form-control shadow-sm" placeholder="contoh: B 1234 ABC" required>
+                        <input type="text" name="plat" class="form-control shadow-sm" placeholder="B 1234 ABC" required>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label">Jenis Mobil</label>
-                        <input type="text" name="jenis" class="form-control shadow-sm" placeholder="contoh:Mazda 3" required>
+                        <input type="text" name="jenis" class="form-control shadow-sm" placeholder="Mazda 3" required>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label">Warna Mobil</label>
-                        <input type="text" name="warna" class="form-control shadow-sm" placeholder="contoh: hitam" required>
+                        <input type="text" name="warna" class="form-control shadow-sm" placeholder="Hitam" required>
                     </div>
 
                     <div class="col-12">
                         <label class="form-label">Pilih Layanan Utama</label>
                         <select name="layanan" class="form-select shadow-sm" required>
-                            <option value="" disabled>Pilih paket cuci...</option>
-                            
+                            <option value="" disabled selected>Pilih paket cuci...</option>
                             <?php
-                            
                             $id_pilihan = isset($_GET['id_paket']) ? $_GET['id_paket'] : '';
-                            
-                            
                             $query_paket = mysqli_query($conn, "SELECT * FROM paket_layanan");
-                            
                             while($p = mysqli_fetch_array($query_paket)) {
-                                
                                 $selected = ($p['id_paket'] == $id_pilihan) ? 'selected' : '';
-                                
                                 echo "<option value='$p[id_paket]' $selected>
                                         $p[nama_paket] - Rp " . number_format($p['harga'], 0, ',', '.') . "
                                       </option>";
@@ -95,9 +122,12 @@ include 'koneksi.php';
                             <option>15:00 - 16:00</option>
                         </select>
                     </div>
-                    <form action="form.php" method="POST"> 
-                        <button type="submit" id="btnSubmit" class="btn btn-payment w-100 py-3 text-uppercase fw-bold">Lanjutkan Pembayaran</button>
-                    </form>
+
+                    <div class="col-12 mt-5">
+                        <button type="submit" name="proses_booking" class="btn btn-payment w-100 py-3 text-uppercase fw-bold">
+                            Lanjutkan Pembayaran
+                        </button>
+                    </div>
                 </form>
             </div>
         </div>
