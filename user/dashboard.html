@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Car Wash - Integrated System</title>
+    <link rel="stylesheet" href="../dashbord.css">
+</head>
+<body>
+
+<div class="sidebar">
+    <h3>Habibi Garage</h3>
+    <ul id="menu">
+        <li class="menu-item active" data-target="dashboard-section">Dashboard </li>
+        <li class="menu-item" data-target="recap-section">Recap </li>
+        <li class="menu-item" data-target="konfirmasi-section">Konfirmasi Pembayaran</li>
+    </ul>
+</div>
+
+<div class="main">
+    <div class="topbar">
+        <input type="text" class="search" placeholder="Cari data pelanggan...">
+        <div class="filter">21 April 2026</div>
+    </div>
+
+    <div id="dashboard-section" class="content-section active">
+        <h1>Dashboard </h1>
+        <p class="subtitle">Monitoring operasional real-time.</p>
+
+        <div class="stats-container">
+            <div class="stat-card blue">
+                <span>Antrean Aktif</span>
+                <h2 id="count-antrean">2</h2>
+            </div>
+            <div class="stat-card green">
+                <span>Pendapatan Hari Ini</span>
+                <h2 id="stat-pendapatan">Rp 0</h2>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>Antrean Kendaraan (Sedang Dicuci)</h3>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Plat Nomor</th>
+                        <th>Paket</th>
+                        <th>Waktu Masuk</th>
+                        <th>Aksi</th>
+                    </tr>
+                </thead>
+                <tbody id="live-queue">
+                    <tr>
+                        <td>B 1234 ABC</td>
+                        <td>Cuci Salju</td>
+                        <td>10:15</td>
+                        <td><button class="btn-selesai" onclick="selesaiCuci(this, 50000)">Selesai</button></td>
+                    </tr>
+                    <tr>
+                        <td>D 999 ZZ</td>
+                        <td>Motor</td>
+                        <td>10:45</td>
+                        <td><button class="btn-selesai" onclick="selesaiCuci(this, 20000)">Selesai</button></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="recap-section" class="content-section">
+        <h1>Recap & Income</h1>
+        <p class="subtitle">Laporan pendapatan yang sudah selesai.</p>
+
+        <div class="card">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Nama / Plat</th>
+                        <th>Tanggal</th>
+                        <th>Harga</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="recap-table-body">
+                    </tbody>
+            </table>
+        </div>
+
+        <div class="card">
+            <h4>Total Pendapatan Harian</h4>
+            <h2 id="harian">Rp 0</h2>
+        </div>
+    </div>
+
+    <div id="konfirmasi-section" class="content-section">
+        <h1>Konfirmasi Pembayaran</h1>
+        <p class="subtitle">Validasi bukti transfer pelanggan sebelum diproses.</p>
+        
+        <div class="card">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Pelanggan</th>
+                        <th>Jumlah</th>
+                        <th>Aksi</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Andi (B 1234 ABC)</td>
+                        <td>Rp 50.000</td>
+                        <td><button class="confirm-btn" onclick="validasiBayar(this)">Validasi Transfer</button></td>
+                    </tr>
+                    <tr>
+                        <td>Budi (D 999 ZZ)</td>
+                        <td>Rp 20.000</td>
+                        <td><button class="confirm-btn" onclick="validasiBayar(this)">Validasi Transfer</button></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script src="../dashbord.js"></script>
+</body>
+</html>

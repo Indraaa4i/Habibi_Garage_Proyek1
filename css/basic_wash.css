@@ -10,7 +10,6 @@ body {
     color: white;
 }
 
-/* Judul */
 .title {
     text-align: center;
     margin: 30px 0;
@@ -19,12 +18,10 @@ body {
     letter-spacing: 1px;
 }
 
-/* Container */
 .container {
     padding: 20px;
 }
 
-/* Kategori */
 .menu-group {
     margin-bottom: 50px;
 }
