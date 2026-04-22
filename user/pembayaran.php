@@ -1,11 +1,11 @@
 <?php
 include 'koneksi.php';
 
-// Ambil ID dari URL
+
 if (isset($_GET['id']) && !empty($_GET['id'])) {
     $id_pemesanan = mysqli_real_escape_string($conn, $_GET['id']);
 
-    // JOIN: Ambil data pemesanan sekaligus data paket (nama & harga)
+    
     $sql = "SELECT p.*, l.nama_paket, l.harga 
             FROM pemesanan p 
             JOIN paket_layanan l ON p.id_paket = l.id_paket 

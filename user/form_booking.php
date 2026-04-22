@@ -1,7 +1,7 @@
 <?php 
 include 'koneksi.php'; 
 
-// --- BAGIAN LOGIKA PHP (SIMPAN DATA) ---
+
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['proses_booking'])) {
     
     // Ambil data dari input form
@@ -14,15 +14,15 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['proses_booking'])) {
     $tanggal = mysqli_real_escape_string($conn, $_POST['tanggal']);
     $jam     = mysqli_real_escape_string($conn, $_POST['jam']);
 
-    // Query INSERT (Pastikan nama kolom p_pelanggan, no_telepon, dll sesuai gambar 1)
+   
     $sql = "INSERT INTO pemesanan (id_paket, nama_pelanggan, plat_mobil, jenis_mobil, warna_mobil, no_telepon, tanggal, jam) 
             VALUES ('$id_paket', '$nama', '$plat', '$jenis', '$warna', '$telp', '$tanggal', '$jam')";
 
     if (mysqli_query($conn, $sql)) {
-        // Ambil ID pemesanan yang baru saja terbuat
+        
         $id_terakhir = mysqli_insert_id($conn);
         
-        // Alihkan ke halaman pembayaran sambil membawa ID lewat URL (?id=...)
+        
         echo "<script>
                 alert('Pemesanan Berhasil!');
                 window.location.href='pembayaran.php?id=" . $id_terakhir . "';
