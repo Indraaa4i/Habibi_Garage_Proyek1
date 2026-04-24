@@ -10,8 +10,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const btnSubmit = document.getElementById('btnSubmit');
 
     bookingForm.addEventListener('submit', function(e) {
-        e.preventDefault(); 
-       
+        
         btnSubmit.innerHTML = 'Mengirim Pesanan...';
         btnSubmit.disabled = true;
 

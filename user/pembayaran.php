@@ -1,29 +1,24 @@
 <?php
 include 'koneksi.php';
 
-// Cek apakah ada ID di URL
+
 if (isset($_GET['id']) && !empty($_GET['id'])) {
     $id_pemesanan = mysqli_real_escape_string($conn, $_GET['id']);
 
-    // Query JOIN (Sesuaikan l.id_paket atau l.layanan sesuai tabelmu)
+    
     $sql = "SELECT p.*, l.nama_paket, l.harga 
             FROM pemesanan p 
-            JOIN paket_layanan l ON p.layanan = l.id_paket 
+            JOIN paket_layanan l ON p.id_paket = l.id_paket 
             WHERE p.id_pemesanan = '$id_pemesanan'";
 
     $query = mysqli_query($conn, $sql);
     $data = mysqli_fetch_array($query);
 
-    // Jika ID ada di URL tapi tidak ada di database (salah ketik ID)
     if (!$data) {
-        die("Maaf, data pesanan dengan ID tersebut tidak ditemukan.");
+        die("Data pesanan tidak ditemukan di sistem.");
     }
 } else {
-    // Jika akses langsung TANPA ID, kita kasih peringatan dulu sebelum pindah
-    echo "<script>
-            alert('Akses ditolak! Kamu harus isi form booking dulu.');
-            window.location.href='form_booking.php';
-          </script>";
+    echo "<script>alert('Akses ilegal! Isi form dulu.'); window.location.href='form_booking.php';</script>";
     exit;
 }
 ?>

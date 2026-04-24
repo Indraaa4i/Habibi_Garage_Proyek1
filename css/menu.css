@@ -1,6 +1,3 @@
-/* ============================================================
-   HABIBI GARAGE — Desktop Layout (clean, minimal)
-   ============================================================ */
 
 :root {
   --navy:       #0f1b2d;
@@ -29,7 +26,7 @@ body {
   min-height: 100vh;
 }
 
-/* ── HEADER ────────────────────────────────────────────── */
+
 .header {
   position: sticky;
   top: 0;
@@ -51,7 +48,6 @@ body {
 }
 
 .logo {
-  /* images/logo.png */
   height: 42px;
   width: auto;
   object-fit: contain;
@@ -141,14 +137,12 @@ body {
   line-height: 1;
 }
 
-/* ── PAGE BODY ──────────────────────────────────────────── */
 .page-body {
   max-width: 1280px;
   margin: 0 auto;
   padding: 36px 40px 60px;
 }
 
-/* ── TOOLBAR ────────────────────────────────────────────── */
 .toolbar {
   display: flex;
   align-items: center;
@@ -210,14 +204,14 @@ body {
   outline: none;
 }
 
-/* ── PRODUCT GRID ───────────────────────────────────────── */
+
 .product-grid {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   gap: 18px;
 }
 
-/* ── CARD ───────────────────────────────────────────────── */
+
 .card {
   background: var(--card-bg);
   border-radius: var(--radius);
@@ -235,7 +229,6 @@ body {
   border-color: #c8d4e8;
 }
 
-/* Wishlist */
 .wishlist-btn {
   position: absolute;
   top: 10px; right: 10px;
@@ -254,7 +247,7 @@ body {
 .wishlist-btn.active     { color: #e24c4c; background: #fff; }
 .wishlist-btn.active svg { fill: #e24c4c; }
 
-/* Badge */
+
 .badge {
   position: absolute;
   top: 10px; left: 10px;
@@ -268,7 +261,7 @@ body {
   border-radius: 4px;
 }
 
-/* Image area — bg sesuai gambar asli (abu muda) */
+
 .card-img-wrap {
   background: #edf0f5;
   padding: 18px 14px 10px;
@@ -278,7 +271,7 @@ body {
   min-height: 130px;
 }
 .card-img {
-  /* images/car.png */
+  
   width: 100%;
   max-width: 180px;
   height: 88px;
@@ -288,7 +281,7 @@ body {
 }
 .card:hover .card-img { transform: translateX(4px) scale(1.04); }
 
-/* Card body */
+
 .card-body {
   padding: 12px 14px 16px;
   display: flex;
@@ -328,7 +321,7 @@ body {
 .add-btn:hover  { background: var(--accent); color: var(--navy); }
 .add-btn:active { opacity: 0.85; }
 
-/* ── TOAST ───────────────────────────────────────────────── */
+
 .toast {
   position: fixed;
   bottom: 28px; right: 28px;
@@ -349,7 +342,7 @@ body {
 }
 .toast.show { opacity: 1; transform: translateY(0); }
 
-/* ── RESPONSIVE ─────────────────────────────────────────── */
+
 @media (max-width: 1200px) {
   .product-grid { grid-template-columns: repeat(4, 1fr); }
 }
