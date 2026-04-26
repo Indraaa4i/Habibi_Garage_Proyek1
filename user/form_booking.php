@@ -64,7 +64,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['proses_booking'])) {
         
         <div class="col-lg-7 right-section d-flex align-items-center p-4 p-md-5">
             <div class="form-wrapper w-100">
-                <form id="bookingForm" action="pembayaran.php" method="POST" class="row g-4">
+                <form id="bookingForm" action="form_booking.php" method="POST" class="row g-4">
                     <div class="col-md-7">
                         <label class="form-label">Nama Lengkap</label>
                         <input type="text" name="nama" class="form-control shadow-sm" placeholder="Contoh: Ali Indrawijaya" required>
@@ -88,7 +88,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['proses_booking'])) {
 
                     <div class="col-12">
                         <label class="form-label">Pilih Layanan Utama</label>
-                        <select name="layanan" class="form-select shadow-sm" required>
+                        <select name="id_paket" class="form-select shadow-sm" required>
                             <option value="" disabled selected>Pilih paket cuci...</option>
                             <?php
                             $id_pilihan = isset($_GET['id_paket']) ? $_GET['id_paket'] : '';
