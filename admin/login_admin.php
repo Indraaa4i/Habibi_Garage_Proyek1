@@ -1,20 +1,22 @@
 <?php
+session_start(); // Memulai session untuk menjaga status login
 include '../user/koneksi.php';
 
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
+if (isset($_POST['submit'])) {
     $email = $_POST['email'];
     $password = $_POST['password'];
 
-    $sql = "SELECT * FROM login_admin WHERE email='$email' AND password='$password'";
-    $result = mysqli_query($conn, $sql);
+    // Mencari data admin berdasarkan email dan password
+    $query = mysqli_query($conn, "SELECT * FROM login_admin WHERE email='$email' AND password='$password'");
+    $cek = mysqli_num_rows($query);
 
-    if (mysqli_num_rows($result) > 0) {
-        
-        echo "Login berhasil!";
-       
+    if ($cek > 0) {
+        // Jika data ditemukan
+        $_SESSION['status'] = "login";
+        header("location:dashboard_admin.php"); // Ganti dengan halaman tujuan setelah login
     } else {
-        
-        echo "Email atau password salah!";
+        // Jika data tidak ditemukan, balikkan ke login_admin.php dengan parameter pesan=gagal
+        header("location:login_admin.php?pesan=gagal");
     }
 }
 ?>
@@ -33,27 +35,26 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 <body>
 
 <div class="container">
-    <h2>Login</h2>
+    <h2>Login Admin</h2>
     
-   <form method="POST" action="login_admin.php">
-    
-    <div class="input-group">
-        <label>Email</label>
-        <input type="email" name="email" placeholder="Masukkan email" required>
-    </div>
+    <?php if(isset($_GET['pesan']) && $_GET['pesan'] == 'gagal'): ?>
+        <p style="color: red; text-align: center;">Email atau Password Salah!</p>
+    <?php endif; ?>
 
-    <div class="input-group">
-        <label>Password</label>
-        <input type="password" name="password" placeholder="Masukkan password" required>
-    </div>
+    <form method="POST" action="login_admin.php">
+        <div class="input-group">
+            <label>Email</label>
+            <input type="email" name="email" placeholder="Masukkan email" required>
+        </div>
 
-    <button type="submit">Login</button>
+        <div class="input-group">
+            <label>Password</label>
+            <input type="password" name="password" placeholder="Masukkan password" required>
+        </div>
 
-</form>
+        <button type="submit" name="submit">Login</button>
+    </form>
 </div>
-
-
-<script src="../js/form_login_admin.js"></script>
 
 </body>
 </html>
