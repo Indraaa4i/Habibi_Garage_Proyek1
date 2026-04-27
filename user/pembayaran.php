@@ -41,17 +41,17 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
         }
         .card-pembayaran {
             background-color: #0d1117;
-            border: 1px solid #30363d;
+            border: 1px solid #e3e5e7;
             border-radius: 20px;
         }
         .info-box {
-            background-color: #161b22;
+            background-color: #4b4b4b;
             border-left: 5px solid #0066ff;
             padding: 20px;
             border-radius: 12px;
         }
         .upload-area {
-            border: 2px dashed #30363d;
+            border: 2px dashed #dde1e6;
             padding: 25px;
             border-radius: 15px;
             transition: all 0.3s ease;
@@ -59,7 +59,7 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
         }
         .upload-area:hover {
             border-color: #0066ff;
-            background-color: rgba(0, 102, 255, 0.05);
+            background-color: rgba(181, 186, 193, 0.05);
         }
         .btn-payment {
             background-color: #0066ff !important;
