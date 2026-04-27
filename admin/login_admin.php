@@ -1,21 +1,21 @@
 <?php
-session_start(); // Memulai session untuk menjaga status login
+session_start(); 
 include '../user/koneksi.php';
 
 if (isset($_POST['submit'])) {
     $email = $_POST['email'];
     $password = $_POST['password'];
 
-    // Mencari data admin berdasarkan email dan password
+   
     $query = mysqli_query($conn, "SELECT * FROM login_admin WHERE email='$email' AND password='$password'");
     $cek = mysqli_num_rows($query);
 
     if ($cek > 0) {
-        // Jika data ditemukan
+        
         $_SESSION['status'] = "login";
-        header("location:dashboard_admin.php"); // Ganti dengan halaman tujuan setelah login
+        header("location:dashboard_admin.php");
     } else {
-        // Jika data tidak ditemukan, balikkan ke login_admin.php dengan parameter pesan=gagal
+       
         header("location:login_admin.php?pesan=gagal");
     }
 }
