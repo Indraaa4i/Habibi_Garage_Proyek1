@@ -1,18 +1,87 @@
 <?php
 include 'koneksi.php';
 
+/* =========================================================
+   PROSES UPLOAD BUKTI BAYAR (submit ke file ini sendiri)
+   ========================================================= */
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
+    if (!isset($_POST['id_pemesanan']) || empty($_POST['id_pemesanan'])) {
+        die("ID pemesanan tidak valid.");
+    }
+
+    $id_pemesanan = mysqli_real_escape_string($conn, $_POST['id_pemesanan']);
+
+    // validasi file
+    if (!isset($_FILES['bukti_bayar']) || $_FILES['bukti_bayar']['error'] !== 0) {
+        die("Upload bukti pembayaran gagal.");
+    }
+
+    $file     = $_FILES['bukti_bayar'];
+    $namaFile = $file['name'];
+    $tmpFile  = $file['tmp_name'];
+    $sizeFile = $file['size'];
+
+    $extValid = ['jpg', 'jpeg', 'png', 'webp'];
+    $extFile  = strtolower(pathinfo($namaFile, PATHINFO_EXTENSION));
+
+    // validasi ekstensi
+    if (!in_array($extFile, $extValid)) {
+        die("Format file tidak didukung. Gunakan JPG, JPEG, PNG, atau WEBP.");
+    }
+
+    // validasi ukuran max 2MB
+    if ($sizeFile > 2 * 1024 * 1024) {
+        die("Ukuran file terlalu besar. Maksimal 2MB.");
+    }
+
+    // nama file unik
+    $namaBaru = 'bukti_' . time() . '_' . uniqid() . '.' . $extFile;
+
+    // folder upload
+    $folderUpload = '../uploads/';
+
+    if (!is_dir($folderUpload)) {
+        mkdir($folderUpload, 0777, true);
+    }
+
+    // pindahkan file
+    if (!move_uploaded_file($tmpFile, $folderUpload . $namaBaru)) {
+        die("Gagal menyimpan file upload.");
+    }
+
+    // update database
+    $update = mysqli_query($conn, "
+        UPDATE pemesanan 
+        SET bukti_bayar = '$namaBaru',
+            status = 'pending'
+        WHERE id_pemesanan = '$id_pemesanan'
+    ");
+
+    if ($update) {
+        echo "<script>
+                alert('Bukti pembayaran berhasil diunggah!');
+                window.location.href='form_booking.php';
+              </script>";
+        exit;
+    } else {
+        die("Gagal menyimpan data pembayaran.");
+    }
+}
+
+/* =========================================================
+   AMBIL DATA PEMESANAN
+   ========================================================= */
 if (isset($_GET['id']) && !empty($_GET['id'])) {
     $id_pemesanan = mysqli_real_escape_string($conn, $_GET['id']);
 
-    
     $sql = "SELECT p.*, l.nama_paket, l.harga 
             FROM pemesanan p 
             JOIN paket_layanan l ON p.id_paket = l.id_paket 
             WHERE p.id_pemesanan = '$id_pemesanan'";
 
     $query = mysqli_query($conn, $sql);
-    $data = mysqli_fetch_array($query);
+    $data  = mysqli_fetch_array($query);
 
     if (!$data) {
         die("Data pesanan tidak ditemukan di sistem.");
@@ -22,8 +91,6 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
     exit;
 }
 ?>
-
-
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -33,7 +100,7 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../css/form.css">
-    
+
     <style>
         body {
             font-family: 'Poppins', sans-serif;
@@ -51,7 +118,7 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
             border-radius: 12px;
         }
         .upload-area {
-            border: 2px dashed #dde1e6;
+            border: 2px dashed #4a4d50;
             padding: 25px;
             border-radius: 15px;
             transition: all 0.3s ease;
@@ -81,7 +148,7 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
     <div class="row justify-content-center">
         <div class="col-md-6 col-lg-5">
             <div class="card card-pembayaran p-4 shadow-lg">
-                
+
                 <div class="text-center mb-4">
                     <img src="../img/logo.png" alt="Logo" style="height: 50px;" class="mb-3">
                     <h3 class="fw-bold text-primary">KONFIRMASI BAYAR</h3>
@@ -91,17 +158,17 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
                 <div class="info-box mb-4">
                     <div class="d-flex justify-content-between mb-2">
                         <small class="text-secondary">Nama Pelanggan</small>
-                        <span class="fw-bold"><?php echo htmlspecialchars($data['nama_pelanggan']); ?></span>
+                        <span class="fw-bold"><?= htmlspecialchars($data['nama_pelanggan']); ?></span>
                     </div>
                     <div class="d-flex justify-content-between mb-3">
                         <small class="text-secondary">Paket Layanan</small>
-                        <span class="text-info fw-bold"><?php echo htmlspecialchars($data['nama_paket']); ?></span>
+                        <span class="text-info fw-bold"><?= htmlspecialchars($data['nama_paket']); ?></span>
                     </div>
                     <hr class="border-secondary">
                     <div class="text-center mt-3">
                         <small class="text-secondary d-block">Total yang Harus Dibayar:</small>
                         <h2 class="text-warning fw-bold mb-0">
-                            Rp <?php echo number_format($data['harga'], 0, ',', '.'); ?>
+                            Rp <?= number_format($data['harga'], 0, ',', '.'); ?>
                         </h2>
                     </div>
                 </div>
@@ -113,17 +180,28 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
                             <span class="d-block fw-bold">BCA - 1234567890</span>
                             <small class="text-secondary">A/N Habibi Garage</small>
                         </div>
-                        <button class="btn btn-sm btn-outline-primary" onclick="alert('Nomor rekening disalin!')">Salin</button>
+                        <button type="button" class="btn btn-sm btn-outline-primary"
+                                onclick="navigator.clipboard.writeText('1234567890'); alert('Nomor rekening disalin!')">
+                            Salin
+                        </button>
                     </div>
                 </div>
 
-                <form action="proses_bayar.php" method="POST" enctype="multipart/form-data">
-                    <input type="hidden" name="id_pemesanan" value="<?php echo $data['id_pemesanan']; ?>">
-                    
+                <form method="POST" enctype="multipart/form-data">
+                    <input type="hidden" name="id_pemesanan" value="<?= $data['id_pemesanan']; ?>">
+
                     <div class="upload-area mb-4">
                         <h6 class="text-white mb-3">Unggah Bukti Transfer</h6>
-                        <input type="file" name="bukti_bayar" class="form-control bg-transparent text-white border-secondary" accept="image/*" required>
-                        <small class="text-muted d-block mt-2">Pastikan gambar jelas (Max 2MB)</small>
+                        <input
+                            type="file"
+                            name="bukti_bayar"
+                            class="form-control bg-transparent text-white border-secondary"
+                            accept=".jpg,.jpeg,.png,.webp"
+                            required
+                        >
+                        <small class="text-muted d-block mt-2">
+                            Format: JPG, JPEG, PNG, WEBP (Maks. 2MB)
+                        </small>
                     </div>
 
                     <button type="submit" class="btn btn-payment w-100 py-3 fw-bold text-uppercase">
@@ -132,10 +210,10 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
                 </form>
 
             </div>
-            
+
             <div class="text-center mt-4">
                 <a href="form_booking.php" class="text-secondary text-decoration-none small">
-                    <i class="bi bi-arrow-left"></i> Kembali ke Pemesanan
+                    ← Kembali ke Pemesanan
                 </a>
             </div>
         </div>
