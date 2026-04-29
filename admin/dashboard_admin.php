@@ -257,7 +257,7 @@ $q_paket = mysqli_query($conn, "SELECT * FROM paket_layanan ORDER BY id_paket DE
                         </td>
                         <td>
                             <?php if (!empty($row['bukti_bayar'])): ?>
-                                <a href="../uploads/<?= htmlspecialchars($row['bukti_bayar']) ?>" target="_blank" class="bukti-link">&#128247; Lihat Bukti</a>
+                                <a href="<?= htmlspecialchars($row['bukti_bayar']) ?>" target="_blank" class="bukti-link"> &#128247; Lihat Bukti</a>
                             <?php else: ?>
                                 <span style="color:#aaa;font-size:13px;">Belum diunggah</span>
                             <?php endif; ?>

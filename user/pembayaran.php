@@ -1,9 +1,10 @@
 <?php
 include 'koneksi.php';
+require_once '../config/cloudinary.php';
 
-/* =========================================================
-   PROSES UPLOAD BUKTI BAYAR (submit ke file ini sendiri)
-   ========================================================= */
+use Cloudinary\Api\Upload\UploadApi;
+
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (!isset($_POST['id_pemesanan']) || empty($_POST['id_pemesanan'])) {
@@ -35,25 +36,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         die("Ukuran file terlalu besar. Maksimal 2MB.");
     }
 
-    // nama file unik
-    $namaBaru = 'bukti_' . time() . '_' . uniqid() . '.' . $extFile;
+    // upload ke Cloudinary
+    try {
+        $upload = (new UploadApi())->upload($tmpFile, [
+            'folder' => 'habibi_garage/bukti_transfer'
+        ]);
 
-    // folder upload
-    $folderUpload = '../uploads/';
+        $urlBukti = $upload['secure_url'];
 
-    if (!is_dir($folderUpload)) {
-        mkdir($folderUpload, 0777, true);
-    }
-
-    // pindahkan file
-    if (!move_uploaded_file($tmpFile, $folderUpload . $namaBaru)) {
-        die("Gagal menyimpan file upload.");
+    } catch (Exception $e) {
+        die("Upload ke Cloudinary gagal: " . $e->getMessage());
     }
 
     // update database
     $update = mysqli_query($conn, "
         UPDATE pemesanan 
-        SET bukti_bayar = '$namaBaru',
+        SET bukti_bayar = '$urlBukti',
             status = 'pending'
         WHERE id_pemesanan = '$id_pemesanan'
     ");
