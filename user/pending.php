@@ -148,8 +148,8 @@ $status = $data['status'];
                         </ul>
                     </div>
 
-                    <a href="dashboard.php" class="btn btn-link text-secondary mt-3">
-                        Kembali ke Dashboard
+                    <a href="landing_page.html" class="btn btn-link text-secondary mt-3">
+                        Kembali ke Home
                     </a>
 
                 </div>

@@ -1,6 +1,13 @@
 <?php 
+session_start(); // Baris paling penting agar data session terbaca
 include 'koneksi.php'; 
 
+// Mengambil data dari session yang dibuat di landing_page.php
+$nama_awal   = $_SESSION['nama_pelanggan'] ?? '';
+$telp_awal   = $_SESSION['no_handphone'] ?? '';
+$plat_awal   = $_SESSION['plat_mobil'] ?? '';
+$jenis_awal  = $_SESSION['jenis_mobil'] ?? '';
+$warna_awal  = $_SESSION['warna_mobil'] ?? '';
 
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['proses_booking'])) {
     
@@ -10,19 +17,15 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['proses_booking'])) {
     $plat    = mysqli_real_escape_string($conn, $_POST['plat']);
     $jenis   = mysqli_real_escape_string($conn, $_POST['jenis']);
     $warna   = mysqli_real_escape_string($conn, $_POST['warna']);
-    $id_paket = mysqli_real_escape_string($conn, $_POST['id_paket']); // ID paket dari dropdown
+    $id_paket = mysqli_real_escape_string($conn, $_POST['id_paket']); 
     $tanggal = mysqli_real_escape_string($conn, $_POST['tanggal']);
     $jam     = mysqli_real_escape_string($conn, $_POST['jam']);
 
-   
     $sql = "INSERT INTO pemesanan (id_paket, nama_pelanggan, plat_mobil, jenis_mobil, warna_mobil, no_telepon, tanggal, jam) 
             VALUES ('$id_paket', '$nama', '$plat', '$jenis', '$warna', '$telp', '$tanggal', '$jam')";
 
     if (mysqli_query($conn, $sql)) {
-        
         $id_terakhir = mysqli_insert_id($conn);
-        
-        
         echo "<script>
                 alert('Pemesanan Berhasil!');
                 window.location.href='pembayaran.php?id=" . $id_terakhir . "';
@@ -63,43 +66,41 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['proses_booking'])) {
         </div>
         
         <div class="col-lg-7 right-section d-flex align-items-center p-4 p-md-5">
-            <div class="form-wrapper w-100">
-                <form id="bookingForm" action="form_booking.php" method="POST" class="row g-4">
-                    <div class="col-md-7">
-                        <label class="form-label">Nama Lengkap</label>
-                        <input type="text" name="nama" class="form-control shadow-sm" placeholder="Contoh: Ali Indrawijaya" required>
-                    </div>
-                    <div class="col-md-5">
-                        <label class="form-label">No. Telepon</label>
-                        <input type="tel" name="telepon" class="form-control shadow-sm" placeholder="0812xxxx" required>
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label">Plat Nomor</label>
-                        <input type="text" name="plat" class="form-control shadow-sm" placeholder="B 1234 ABC" required>
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label">Jenis Mobil</label>
-                        <input type="text" name="jenis" class="form-control shadow-sm" placeholder="Mazda 3" required>
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label">Warna Mobil</label>
-                        <input type="text" name="warna" class="form-control shadow-sm" placeholder="Hitam" required>
-                    </div>
+    <div class="form-wrapper w-100">
+        <form id="bookingForm" action="form_booking.php" method="POST" class="row g-4">
+            <div class="col-md-7">
+                <label class="form-label">Nama Lengkap</label>
+                <input type="text" name="nama" class="form-control shadow-sm" value="<?= htmlspecialchars($nama_awal) ?>" required>
+            </div>
+            <div class="col-md-5">
+                <label class="form-label">No. Telepon</label>
+                <input type="tel" name="telepon" class="form-control shadow-sm" value="<?= htmlspecialchars($telp_awal) ?>" required>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Plat Nomor</label>
+                <input type="text" name="plat" class="form-control shadow-sm" value="<?= htmlspecialchars($plat_awal) ?>" required>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Jenis Mobil</label>
+                <input type="text" name="jenis" class="form-control shadow-sm" value="<?= htmlspecialchars($jenis_awal) ?>" required>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Warna Mobil</label>
+                <input type="text" name="warna" class="form-control shadow-sm" value="<?= htmlspecialchars($warna_awal) ?>" required>
+            </div>
 
-                    <div class="col-12">
-                        <label class="form-label">Pilih Layanan Utama</label>
-                        <select name="id_paket" class="form-select shadow-sm" required>
-                            <option value="" disabled selected>Pilih paket cuci...</option>
-                            <?php
-                            $id_pilihan = isset($_GET['id_paket']) ? $_GET['id_paket'] : '';
-                            $query_paket = mysqli_query($conn, "SELECT * FROM paket_layanan");
-                            while($p = mysqli_fetch_array($query_paket)) {
-                                $selected = ($p['id_paket'] == $id_pilihan) ? 'selected' : '';
-                                echo "<option value='$p[id_paket]' $selected>
-                                        $p[nama_paket] - Rp " . number_format($p['harga'], 0, ',', '.') . "
-                                      </option>";
-                            }
-                            ?>
+            <div class="col-12">
+                <label class="form-label">Pilih Layanan Utama</label>
+                <select name="id_paket" class="form-select shadow-sm" required>
+                    <option value="" disabled selected>Pilih paket cuci...</option>
+                    <?php
+                    $id_pilihan = isset($_GET['id_paket']) ? $_GET['id_paket'] : '';
+                    $query_paket = mysqli_query($conn, "SELECT * FROM paket_layanan");
+                    while($p = mysqli_fetch_array($query_paket)) {
+                        $selected = ($p['id_paket'] == $id_pilihan) ? 'selected' : '';
+                        echo "<option value='$p[id_paket]' $selected>$p[nama_paket] - Rp " . number_format($p['harga'], 0, ',', '.') . "</option>";
+                    }
+                    ?>
                         </select>
                     </div>
                     <div class="col-md-6">
