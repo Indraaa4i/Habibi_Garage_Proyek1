@@ -4,7 +4,9 @@ require_once '../config/cloudinary.php';
 
 use Cloudinary\Api\Upload\UploadApi;
 
-
+/* =========================================================
+   HANDLE UPLOAD BUKTI PEMBAYARAN
+   ========================================================= */
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (!isset($_POST['id_pemesanan']) || empty($_POST['id_pemesanan'])) {
@@ -13,30 +15,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $id_pemesanan = mysqli_real_escape_string($conn, $_POST['id_pemesanan']);
 
+    // cek data
+    $cek = mysqli_query($conn, "SELECT status FROM pemesanan WHERE id_pemesanan = '$id_pemesanan'");
+    $dataCek = mysqli_fetch_assoc($cek);
+
+    if (!$dataCek) {
+        die("Data pemesanan tidak ditemukan.");
+    }
+
     // validasi file
     if (!isset($_FILES['bukti_bayar']) || $_FILES['bukti_bayar']['error'] !== 0) {
         die("Upload bukti pembayaran gagal.");
     }
 
     $file     = $_FILES['bukti_bayar'];
-    $namaFile = $file['name'];
     $tmpFile  = $file['tmp_name'];
     $sizeFile = $file['size'];
 
     $extValid = ['jpg', 'jpeg', 'png', 'webp'];
-    $extFile  = strtolower(pathinfo($namaFile, PATHINFO_EXTENSION));
+    $extFile  = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
 
-    // validasi ekstensi
     if (!in_array($extFile, $extValid)) {
-        die("Format file tidak didukung. Gunakan JPG, JPEG, PNG, atau WEBP.");
+        die("Format file tidak valid.");
     }
 
-    // validasi ukuran max 2MB
     if ($sizeFile > 2 * 1024 * 1024) {
-        die("Ukuran file terlalu besar. Maksimal 2MB.");
+        die("Ukuran file terlalu besar (max 2MB).");
     }
 
-    // upload ke Cloudinary
+    // upload cloudinary
     try {
         $upload = (new UploadApi())->upload($tmpFile, [
             'folder' => 'habibi_garage/bukti_transfer'
@@ -45,50 +52,49 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $urlBukti = $upload['secure_url'];
 
     } catch (Exception $e) {
-        die("Upload ke Cloudinary gagal: " . $e->getMessage());
+        die("Upload gagal: " . $e->getMessage());
     }
 
     // update database
-    $update = mysqli_query($conn, "
+    mysqli_query($conn, "
         UPDATE pemesanan 
         SET bukti_bayar = '$urlBukti',
             status = 'pending'
         WHERE id_pemesanan = '$id_pemesanan'
     ");
 
-    if ($update) {
-        echo "<script>
-                alert('Bukti pembayaran berhasil diunggah!');
-                window.location.href='form_booking.php';
-              </script>";
-        exit;
-    } else {
-        die("Gagal menyimpan data pembayaran.");
-    }
+    echo "<script>
+        alert('Bukti berhasil dikirim!');
+       window.location.href='pending.php?id_pemesanan=$id_pemesanan';
+    </script>";
+    exit;
 }
 
 /* =========================================================
-   AMBIL DATA PEMESANAN
+   AMBIL DATA PEMBAYARAN (FIX UTAMA DI SINI)
    ========================================================= */
 if (isset($_GET['id']) && !empty($_GET['id'])) {
+
     $id_pemesanan = mysqli_real_escape_string($conn, $_GET['id']);
 
+    // ❌ FIX: HAPUS FILTER STATUS (INI BIANG ERROR KAMU)
     $sql = "SELECT p.*, l.nama_paket, l.harga 
             FROM pemesanan p 
             JOIN paket_layanan l ON p.id_paket = l.id_paket 
             WHERE p.id_pemesanan = '$id_pemesanan'";
 
     $query = mysqli_query($conn, $sql);
-    $data  = mysqli_fetch_array($query);
+    $data  = mysqli_fetch_assoc($query);
 
     if (!$data) {
-        die("Data pesanan tidak ditemukan di sistem.");
+        die("Data pesanan tidak ditemukan.");
     }
+
 } else {
-    echo "<script>alert('Akses ilegal! Isi form dulu.'); window.location.href='form_booking.php';</script>";
-    exit;
+    die("Akses tidak valid.");
 }
 ?>
+
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -149,7 +155,7 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
 
                 <div class="text-center mb-4">
                     <img src="../img/logo.png" alt="Logo" style="height: 50px;" class="mb-3">
-                    <h3 class="fw-bold text-primary">KONFIRMASI BAYAR</h3>
+                    <h3 class="fw-bold text-primary">UPLOAD BUKTI PEMBAYARAN</h3>
                     <p class="text-secondary small">Silakan transfer sesuai nominal di bawah ini</p>
                 </div>
 

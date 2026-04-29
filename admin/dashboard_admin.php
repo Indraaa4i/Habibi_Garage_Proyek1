@@ -12,45 +12,96 @@ if (!isset($_SESSION['status']) || $_SESSION['status'] !== 'login') {
     header("Location: login_admin.php");
     exit;
 }
+
 include '../user/koneksi.php';
 
-// ── Statistik ─────────────────────────────────────────────
+
+// ─────────────────────────────────────────────
+// STATISTIK
+// ─────────────────────────────────────────────
 $hari_ini = date('Y-m-d');
 
-// Total booking hari ini
-$q_booking_hari = mysqli_query($conn, "SELECT COUNT(*) as total FROM pemesanan WHERE tanggal = '$hari_ini'");
-$total_booking  = mysqli_fetch_assoc($q_booking_hari)['total'];
+// total booking hari ini
+$q_booking_hari = mysqli_query($conn, "
+    SELECT COUNT(*) as total 
+    FROM pemesanan 
+    WHERE tanggal = '$hari_ini'
+");
+$total_booking = mysqli_fetch_assoc($q_booking_hari)['total'];
 
-// Booking pending
-$q_pending     = mysqli_query($conn, "SELECT COUNT(*) as total FROM pemesanan WHERE status = 'pending'");
+// pending (user sudah upload bukti)
+$q_pending = mysqli_query($conn, "
+    SELECT COUNT(*) as total 
+    FROM pemesanan 
+    WHERE status = 'pending'
+");
 $total_pending = mysqli_fetch_assoc($q_pending)['total'];
 
-// Pendapatan hari ini
-$q_income = mysqli_query($conn, "
+// income hari ini
+$q_income_today = mysqli_query($conn, "
     SELECT SUM(pl.harga) as total
     FROM pemesanan p
     JOIN paket_layanan pl ON p.id_paket = pl.id_paket
-    WHERE p.status = 'lunas' AND p.tanggal = '$hari_ini'
+    WHERE p.status = 'lunas'
+    AND DATE(p.tanggal) = CURDATE()
 ");
-$pendapatan = mysqli_fetch_assoc($q_income)['total'] ?? 0;
+$income_today = mysqli_fetch_assoc($q_income_today)['total'] ?? 0;
 
-// ── Aksi Konfirmasi Pembayaran ───────────────────────────
+// income bulan ini
+$q_income_month = mysqli_query($conn, "
+    SELECT SUM(pl.harga) as total
+    FROM pemesanan p
+    JOIN paket_layanan pl ON p.id_paket = pl.id_paket
+    WHERE p.status = 'lunas'
+    AND MONTH(p.tanggal) = MONTH(CURDATE())
+    AND YEAR(p.tanggal) = YEAR(CURDATE())
+");
+$income_month = mysqli_fetch_assoc($q_income_month)['total'] ?? 0;
+
+
+// ─────────────────────────────────────────────
+// FLOW STATUS ADMIN (FIXED)
+// ─────────────────────────────────────────────
 if (isset($_POST['aksi']) && isset($_POST['id_pemesanan'])) {
+
     $id   = mysqli_real_escape_string($conn, $_POST['id_pemesanan']);
     $aksi = $_POST['aksi'];
 
+    // KONFIRMASI PEMBAYARAN → LUNAS
     if ($aksi === 'lunas') {
-        mysqli_query($conn, "UPDATE pemesanan SET status='lunas' WHERE id_pemesanan='$id'");
-    } elseif ($aksi === 'batal') {
-        mysqli_query($conn, "UPDATE pemesanan SET status='dibatalkan' WHERE id_pemesanan='$id'");
+        mysqli_query($conn, "
+            UPDATE pemesanan 
+            SET status='lunas'
+            WHERE id_pemesanan='$id'
+        ");
+
+        // langsung arahkan ke bukti
+        echo "<script>
+            alert('Pembayaran berhasil dikonfirmasi!');
+            window.location.href='bukti.php?id=$id';
+        </script>";
+        exit;
+    }
+
+    // BATAL
+    if ($aksi === 'batal') {
+        mysqli_query($conn, "
+            UPDATE pemesanan 
+            SET status='dibatalkan'
+            WHERE id_pemesanan='$id'
+        ");
     }
 
     header("Location: dashboard_admin.php");
     exit;
 }
 
-// ── Aksi CRUD Paket Layanan ──────────────────────────────
+
+// ─────────────────────────────────────────────
+// CRUD PAKET
+// ─────────────────────────────────────────────
 if (isset($_POST['aksi_menu'])) {
+
     $aksi = $_POST['aksi_menu'];
 
     if ($aksi === 'tambah') {
@@ -58,8 +109,10 @@ if (isset($_POST['aksi_menu'])) {
         $harga      = mysqli_real_escape_string($conn, $_POST['harga']);
         $deskripsi  = mysqli_real_escape_string($conn, $_POST['deskripsi']);
 
-        mysqli_query($conn, "INSERT INTO paket_layanan (nama_paket, harga, deskripsi)
-                             VALUES ('$nama_paket', '$harga', '$deskripsi')");
+        mysqli_query($conn, "
+            INSERT INTO paket_layanan (nama_paket, harga, deskripsi)
+            VALUES ('$nama_paket', '$harga', '$deskripsi')
+        ");
     }
 
     if ($aksi === 'edit') {
@@ -68,32 +121,70 @@ if (isset($_POST['aksi_menu'])) {
         $harga      = mysqli_real_escape_string($conn, $_POST['harga']);
         $deskripsi  = mysqli_real_escape_string($conn, $_POST['deskripsi']);
 
-        mysqli_query($conn, "UPDATE paket_layanan 
-                             SET nama_paket='$nama_paket', harga='$harga', deskripsi='$deskripsi'
-                             WHERE id_paket='$id_paket'");
+        mysqli_query($conn, "
+            UPDATE paket_layanan 
+            SET nama_paket='$nama_paket', harga='$harga', deskripsi='$deskripsi'
+            WHERE id_paket='$id_paket'
+        ");
     }
 
     if ($aksi === 'hapus') {
         $id_paket = mysqli_real_escape_string($conn, $_POST['id_paket']);
-        mysqli_query($conn, "DELETE FROM paket_layanan WHERE id_paket='$id_paket'");
+
+        mysqli_query($conn, "
+            DELETE FROM paket_layanan 
+            WHERE id_paket='$id_paket'
+        ");
     }
 
     header("Location: dashboard_admin.php");
     exit;
 }
 
-// ── Query Data ───────────────────────────────────────────
 
-// Antrian pending
+// ─────────────────────────────────────────────
+// TAMBAH PELANGGAN LANGSUNG (WALK-IN)
+// ─────────────────────────────────────────────
+if (isset($_POST['aksi_pelanggan']) && $_POST['aksi_pelanggan'] === 'tambah_langsung') {
+
+    $nama_pelanggan = mysqli_real_escape_string($conn, $_POST['nama_pelanggan']);
+    $no_telepon     = mysqli_real_escape_string($conn, $_POST['no_telepon']);
+    $plat_mobil     = mysqli_real_escape_string($conn, $_POST['plat_mobil']);
+    $jenis_mobil    = mysqli_real_escape_string($conn, $_POST['jenis_mobil']);
+    $warna_mobil    = mysqli_real_escape_string($conn, $_POST['warna_mobil']);
+    $id_paket       = mysqli_real_escape_string($conn, $_POST['id_paket']);
+    $tanggal        = mysqli_real_escape_string($conn, $_POST['tanggal']);
+    $jam            = mysqli_real_escape_string($conn, $_POST['jam']);
+
+    mysqli_query($conn, "
+        INSERT INTO pemesanan (
+            nama_pelanggan, no_telepon, plat_mobil, jenis_mobil, warna_mobil,
+            id_paket, tanggal, jam, status, created_at
+        )
+        VALUES (
+            '$nama_pelanggan', '$no_telepon', '$plat_mobil', '$jenis_mobil', '$warna_mobil',
+            '$id_paket', '$tanggal', '$jam', 'proses', NOW()
+        )
+    ");
+
+    header("Location: dashboard_admin.php");
+    exit;
+}
+
+
+// ─────────────────────────────────────────────
+// QUERY DATA
+// ─────────────────────────────────────────────
+
+// semua booking
 $q_antrian = mysqli_query($conn, "
     SELECT p.*, pl.nama_paket, pl.harga
     FROM pemesanan p
     JOIN paket_layanan pl ON p.id_paket = pl.id_paket
-    WHERE p.status = 'pending'
-    ORDER BY p.tanggal ASC, p.jam ASC
+    ORDER BY p.created_at DESC
 ");
 
-// Konfirmasi pembayaran
+// pending (menunggu admin cek)
 $q_konfirmasi = mysqli_query($conn, "
     SELECT p.*, pl.nama_paket, pl.harga
     FROM pemesanan p
@@ -102,7 +193,7 @@ $q_konfirmasi = mysqli_query($conn, "
     ORDER BY p.tanggal ASC, p.jam ASC
 ");
 
-// Recap
+// recap lunas
 $q_recap = mysqli_query($conn, "
     SELECT p.*, pl.nama_paket, pl.harga
     FROM pemesanan p
@@ -112,9 +203,13 @@ $q_recap = mysqli_query($conn, "
     LIMIT 50
 ");
 
-// Paket layanan
-$q_paket = mysqli_query($conn, "SELECT * FROM paket_layanan ORDER BY id_paket DESC");
+// paket
+$q_paket = mysqli_query($conn, "
+    SELECT * FROM paket_layanan 
+    ORDER BY id_paket DESC
+");
 ?>
+
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -167,14 +262,44 @@ $q_paket = mysqli_query($conn, "SELECT * FROM paket_layanan ORDER BY id_paket DE
                 <span>Menunggu Konfirmasi</span>
                 <h2><?= $total_pending ?></h2>
             </div>
-            <div class="stat-card green">
-                <span>Pendapatan Hari Ini</span>
-                <h2>Rp <?= number_format($pendapatan, 0, ',', '.') ?></h2>
-            </div>
         </div>
 
+        <!-- Tambah Pelanggan Langsung -->
         <div class="card">
-            <h3>Semua Booking Masuk (Pending)</h3>
+            <h3>Tambah Pelanggan Langsung</h3>
+            <form method="POST" class="form-paket">
+                <input type="hidden" name="aksi_pelanggan" value="tambah_langsung">
+
+                <div class="form-grid">
+                    <input type="text" name="nama_pelanggan" placeholder="Nama Pelanggan" required>
+                    <input type="text" name="no_telepon" placeholder="No Telepon" required>
+                    <input type="text" name="plat_mobil" placeholder="Plat Mobil" required>
+                    <input type="text" name="jenis_mobil" placeholder="Jenis Mobil" required>
+                    <input type="text" name="warna_mobil" placeholder="Warna Mobil" required>
+
+                    <select name="id_paket" required>
+                        <option value="">Pilih Paket</option>
+                        <?php
+                        $paket_form = mysqli_query($conn, "SELECT * FROM paket_layanan ORDER BY nama_paket ASC");
+                        while ($p = mysqli_fetch_assoc($paket_form)):
+                        ?>
+                            <option value="<?= $p['id_paket'] ?>">
+                                <?= htmlspecialchars($p['nama_paket']) ?> - Rp <?= number_format($p['harga'], 0, ',', '.') ?>
+                            </option>
+                        <?php endwhile; ?>
+                    </select>
+
+                    <input type="date" name="tanggal" required>
+                    <input type="time" name="jam" required>
+                </div>
+
+                <button type="submit" class="btn-lunas">Tambah Pelanggan</button>
+            </form>
+        </div>
+
+        <!-- Semua Booking -->
+        <div class="card">
+            <h3>Semua Booking Masuk</h3>
             <table class="table" id="mainTable">
                 <thead>
                     <tr>
@@ -206,11 +331,27 @@ $q_paket = mysqli_query($conn, "SELECT * FROM paket_layanan ORDER BY id_paket DE
                             <?= date('d/m/Y', strtotime($row['tanggal'])) ?><br>
                             <small><?= htmlspecialchars($row['jam']) ?></small>
                         </td>
-                        <td><span class="badge badge-pending">Pending</span></td>
+                        <td>
+                            <?php
+                            $status = strtolower($row['status']);
+                            $badgeClass = 'badge-pending';
+
+                            if ($status == 'proses') {
+                                $badgeClass = 'badge-proses';
+                            } elseif ($status == 'lunas') {
+                                $badgeClass = 'badge-lunas';
+                            } elseif ($status == 'dibatalkan') {
+                                $badgeClass = 'badge-batal';
+                            }
+                            ?>
+                            <span class="badge <?= $badgeClass ?>">
+                                <?= ucfirst($row['status']) ?>
+                            </span>
+                        </td>
                     </tr>
                     <?php endwhile; ?>
                     <?php if (!$ada): ?>
-                        <tr class="empty-row"><td colspan="6">Tidak ada booking pending saat ini.</td></tr>
+                        <tr class="empty-row"><td colspan="6">Belum ada booking masuk.</td></tr>
                     <?php endif; ?>
                 </tbody>
             </table>
@@ -257,7 +398,7 @@ $q_paket = mysqli_query($conn, "SELECT * FROM paket_layanan ORDER BY id_paket DE
                         </td>
                         <td>
                             <?php if (!empty($row['bukti_bayar'])): ?>
-                                <a href="<?= htmlspecialchars($row['bukti_bayar']) ?>" target="_blank" class="bukti-link"> &#128247; Lihat Bukti</a>
+                                <a href="<?= htmlspecialchars($row['bukti_bayar']) ?>" target="_blank" class="bukti-link">&#128247; Lihat Bukti</a>
                             <?php else: ?>
                                 <span style="color:#aaa;font-size:13px;">Belum diunggah</span>
                             <?php endif; ?>
@@ -282,7 +423,19 @@ $q_paket = mysqli_query($conn, "SELECT * FROM paket_layanan ORDER BY id_paket DE
     <!-- Recap -->
     <div id="recap-section" class="content-section">
         <h1>Recap & Income</h1>
-        <p class="subtitle">Laporan booking yang sudah lunas.</p>
+        <p class="subtitle">Ringkasan pendapatan harian, bulanan, dan riwayat transaksi selesai.</p>
+
+        <div class="stats-container">
+            <div class="stat-card green">
+                <span>Pendapatan Hari Ini</span>
+                <h2>Rp <?= number_format($income_today, 0, ',', '.') ?></h2>
+            </div>
+
+            <div class="stat-card blue">
+                <span>Pendapatan Bulan Ini</span>
+                <h2>Rp <?= number_format($income_month, 0, ',', '.') ?></h2>
+            </div>
+        </div>
 
         <div class="card">
             <table class="table">
