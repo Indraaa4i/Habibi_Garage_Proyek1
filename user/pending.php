@@ -148,7 +148,7 @@ $status = $data['status'];
                         </ul>
                     </div>
 
-                    <a href="landing_page.html" class="btn btn-link text-secondary mt-3">
+                    <a href="landing_page.php" class="btn btn-link text-secondary mt-3">
                         Kembali ke Home
                     </a>
 

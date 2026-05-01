@@ -3,13 +3,13 @@ session_start();
 
 if (isset($_GET['logout'])) {
     session_destroy();
-    header("Location: login_admin.php");
+    header("Location: ../user/landing_page.php");
     exit;
 }
 
 // Proteksi login
 if (!isset($_SESSION['status']) || $_SESSION['status'] !== 'login') {
-    header("Location: login_admin.php");
+    header("Location: ../user/landing_page.php");
     exit;
 }
 
@@ -150,8 +150,6 @@ if (isset($_POST['aksi_pelanggan']) && $_POST['aksi_pelanggan'] === 'tambah_lang
     $nama_pelanggan = mysqli_real_escape_string($conn, $_POST['nama_pelanggan']);
     $no_telepon     = mysqli_real_escape_string($conn, $_POST['no_telepon']);
     $plat_mobil     = mysqli_real_escape_string($conn, $_POST['plat_mobil']);
-    $jenis_mobil    = mysqli_real_escape_string($conn, $_POST['jenis_mobil']);
-    $warna_mobil    = mysqli_real_escape_string($conn, $_POST['warna_mobil']);
     $id_paket       = mysqli_real_escape_string($conn, $_POST['id_paket']);
     $tanggal        = mysqli_real_escape_string($conn, $_POST['tanggal']);
     $jam            = mysqli_real_escape_string($conn, $_POST['jam']);
@@ -274,8 +272,6 @@ $q_paket = mysqli_query($conn, "
                     <input type="text" name="nama_pelanggan" placeholder="Nama Pelanggan" required>
                     <input type="text" name="no_telepon" placeholder="No Telepon" required>
                     <input type="text" name="plat_mobil" placeholder="Plat Mobil" required>
-                    <input type="text" name="jenis_mobil" placeholder="Jenis Mobil" required>
-                    <input type="text" name="warna_mobil" placeholder="Warna Mobil" required>
 
                     <select name="id_paket" required>
                         <option value="">Pilih Paket</option>
@@ -319,10 +315,7 @@ $q_paket = mysqli_query($conn, "
                             <strong><?= htmlspecialchars($row['nama_pelanggan']) ?></strong><br>
                             <small><?= htmlspecialchars($row['no_telepon']) ?></small>
                         </td>
-                        <td>
-                            <?= htmlspecialchars($row['plat_mobil']) ?><br>
-                            <small><?= htmlspecialchars($row['jenis_mobil']) ?> · <?= htmlspecialchars($row['warna_mobil']) ?></small>
-                        </td>
+                    
                         <td>
                             <?= htmlspecialchars($row['nama_paket']) ?><br>
                             <small>Rp <?= number_format($row['harga'], 0, ',', '.') ?></small>

@@ -142,16 +142,6 @@ if ($data['status'] !== 'lunas') {
             <div class="col-6 text-end"><?= $data['plat_mobil'] ?></div>
         </div>
 
-        <div class="row mb-2">
-            <div class="col-6 text-muted">Jenis</div>
-            <div class="col-6 text-end"><?= $data['jenis_mobil'] ?></div>
-        </div>
-
-        <div class="row mb-2">
-            <div class="col-6 text-muted">Warna</div>
-            <div class="col-6 text-end"><?= $data['warna_mobil'] ?></div>
-        </div>
-
         <div class="line"></div>
 
         <!-- BUKTI -->

@@ -1,77 +1,65 @@
 <?php
 session_start();
+
+// Handle logout
+if (isset($_GET['logout'])) {
+    session_destroy();
+    header('Location: landing_page.php');
+    exit;
+}
+
 include 'koneksi.php';
 
 $error = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
-    $tipe = $_POST['tipe'] ?? '';
+    $no_hp = trim(mysqli_real_escape_string($conn, $_POST['no_handphone'] ?? ''));
+    $plat  = strtoupper(trim(mysqli_real_escape_string($conn, $_POST['plat_mobil'] ?? '')));
 
-    // ── LOGIN USER ────────────────────────────────────────────────
-    // Cocokkan no_telepon + plat_mobil dari tabel pemesanan
-    if ($tipe === 'user') {
-        $no_hp = trim(mysqli_real_escape_string($conn, $_POST['no_handphone'] ?? ''));
-        $plat  = strtoupper(trim(mysqli_real_escape_string($conn, $_POST['plat_mobil'] ?? '')));
+    if ($no_hp === '' || $plat === '') {
+        $error = 'No Handphone dan Plat Mobil wajib diisi.';
+    } else {
 
-        if ($no_hp === '' || $plat === '') {
-            $error = 'No Handphone dan Plat Mobil wajib diisi.';
-        } else {
-            // Ambil data booking terakhir user
-            $q = mysqli_query($conn,
-                "SELECT * FROM pemesanan
-                 WHERE no_telepon = '$no_hp'
-                   AND UPPER(REPLACE(plat_mobil,' ','')) = REPLACE('$plat',' ','')
-                 ORDER BY id_pemesanan DESC
-                 LIMIT 1"
-            );
+        // ── CEK ADMIN DULU ─────────────────────────────────────────
+        $q_admin = mysqli_query($conn,
+            "SELECT * FROM login_admin
+             WHERE no_telepon = '$no_hp' AND password = '$plat'
+             LIMIT 1"
+        );
 
-            if ($q && mysqli_num_rows($q) > 0) {
-                $data = mysqli_fetch_assoc($q);
+        if ($q_admin && mysqli_num_rows($q_admin) > 0) {
+            $admin = mysqli_fetch_assoc($q_admin);
+            $_SESSION['status']      = 'login';
+            $_SESSION['admin_login'] = true;
+            $_SESSION['admin_user']  = $admin['no_telepon'];
 
-                // Simpan ke session untuk auto-fill form_booking.php
-                $_SESSION['user_login']     = true;
-                $_SESSION['no_handphone']   = $data['no_telepon'];
-                $_SESSION['plat_mobil']     = $data['plat_mobil'];
-                $_SESSION['nama_pelanggan'] = $data['nama_pelanggan'];
-                $_SESSION['jenis_mobil']    = $data['jenis_mobil'];
-                $_SESSION['warna_mobil']    = $data['warna_mobil'];
-
-                header('Location: menu.php');
-                exit;
-            } else {
-                $error = 'No Handphone atau Plat Mobil tidak ditemukan.';
-            }
+            header('Location: ../admin/dashboard_admin.php');
+            exit;
         }
-    }
 
-    // ── LOGIN ADMIN ───────────────────────────────────────────────
-    // Username = kolom email di tabel login_admin (dipakai sebagai teks, bukan harus format email)
-    if ($tipe === 'admin') {
-        $username = trim(mysqli_real_escape_string($conn, $_POST['username'] ?? ''));
-        $password = trim(mysqli_real_escape_string($conn, $_POST['password'] ?? ''));
+        // ── CEK USER ───────────────────────────────────────────────
+        $q_user = mysqli_query($conn,
+            "SELECT * FROM pemesanan
+             WHERE no_telepon = '$no_hp'
+               AND UPPER(REPLACE(plat_mobil,' ','')) = REPLACE('$plat',' ','')
+             ORDER BY id_pemesanan DESC
+             LIMIT 1"
+        );
 
-        if ($username === '' || $password === '') {
-            $error = 'Username dan Password wajib diisi.';
-        } else {
-            $q = mysqli_query($conn,
-                "SELECT * FROM login_admin
-                 WHERE email = '$username' AND password = '$password'
-                 LIMIT 1"
-            );
+        if ($q_user && mysqli_num_rows($q_user) > 0) {
+            $data = mysqli_fetch_assoc($q_user);
 
-            if ($q && mysqli_num_rows($q) > 0) {
-                $admin = mysqli_fetch_assoc($q);
-                $_SESSION['status']      = 'login';
-                $_SESSION['admin_login'] = true;
-                $_SESSION['admin_user']  = $admin['email'];
+            $_SESSION['user_login']     = true;
+            $_SESSION['no_handphone']   = $data['no_telepon'];
+            $_SESSION['plat_mobil']     = $data['plat_mobil'];
+            $_SESSION['nama_pelanggan'] = $data['nama_pelanggan'];
 
-                header('Location: ../admin/dashboard_admin.php');
-                exit;
-            } else {
-                $error = 'Username atau Password salah.';
-            }
+            header('Location: profil.php');
+            exit;
         }
+
+        $error = 'No Handphone atau Plat Mobil tidak ditemukan.';
     }
 }
 ?>
@@ -105,16 +93,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <div class="hero-overlay"></div>
   <div class="hero-content">
 
-   <!-- Left: branding + tagline -->
-<div class="hero-left">
-  <div class="brand-logo-hero">
-    <img src="../img/logo.png" alt="Habibi Garage Logo" class="hero-logo">
-    <div class="brand-divider"></div>
-    <div class="hero-tagline">Clean<br>Washing<br>Solution</div>
-  </div>
-</div>
+    <!-- Left: branding + tagline -->
+    <div class="hero-left">
+      <div class="brand-logo-hero">
+        <img src="../img/logo.png" alt="Habibi Garage Logo" class="hero-logo">
+        <div class="brand-divider"></div>
+        <div class="hero-tagline">Clean<br>Washing<br>Solution</div>
+      </div>
+    </div>
 
-    <!-- Right: auth card -->
+    <!-- Right: auth card (satu form untuk semua) -->
     <div class="auth-card">
       <div class="auth-avatar">
         <svg viewBox="0 0 24 24" width="28" height="28" fill="rgba(255,255,255,0.6)">
@@ -129,71 +117,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </p>
       <?php endif; ?>
 
-      <!-- ── USER FORM (default tampil) ── -->
-      <div id="tab-user">
+      <p class="auth-sub">
+        Belum memiliki akun? <a href="menu.php">Booking Sekarang</a>
+      </p>
 
-        <p class="auth-sub">
-          Belum memiliki akun? <a href="menu.php">booking Sekarang</a>
-        </p>
+      <form method="POST" action="landing_page.php">
+        <div class="input-group">
+          <label>No Handphone</label>
+          <input type="text" name="no_handphone"
+                 placeholder="08512503097"
+                 value="<?= htmlspecialchars($_POST['no_handphone'] ?? '') ?>">
+        </div>
+        <div class="input-group">
+          <label>Plat Mobil (Password)</label>
+          <input type="text" name="plat_mobil"
+                 placeholder="E 2105 CNTH"
+                 style="text-transform:uppercase"
+                 value="<?= htmlspecialchars($_POST['plat_mobil'] ?? '') ?>">
+        </div>
 
-        <form method="POST" action="landing_page.php">
-          <input type="hidden" name="tipe" value="user">
-
-          <div class="input-group">
-            <label>No Handphone</label>
-            <input type="text" name="no_handphone"
-                   placeholder="08512503097"
-                   value="<?= htmlspecialchars($_POST['no_handphone'] ?? '') ?>">
-          </div>
-          <div class="input-group">
-            <label>Plat mobil</label>
-            <input type="text" name="plat_mobil"
-                   placeholder="E 2105 CNTH"
-                   style="text-transform:uppercase"
-                   value="<?= htmlspecialchars($_POST['plat_mobil'] ?? '') ?>">
-          </div>
-
-          <button class="btn-signup" type="submit">LOGIN</button>
-        </form>
-
-        <p style="text-align:right;margin-top:10px;">
-          <a href="#" onclick="showAdmin();return false;"
-             style="font-size:11px;color:rgba(255,255,255,0.3);text-decoration:none;">
-            Admin ›
-          </a>
-        </p>
-      </div>
-
-      <!-- ── ADMIN FORM (tersembunyi) ── -->
-      <div id="tab-admin" style="display:none;">
-
-        <p class="auth-sub">Login sebagai Admin</p>
-
-        <form method="POST" action="landing_page.php">
-          <input type="hidden" name="tipe" value="admin">
-
-          <div class="input-group">
-            <label>Username</label>
-            <input type="text" name="username"
-                   placeholder="username admin"
-                   value="<?= htmlspecialchars($_POST['email'] ?? '') ?>">
-          </div>
-          <div class="input-group">
-            <label>Password</label>
-            <input type="password" name="password"
-                   placeholder="••••••••">
-          </div>
-
-          <button class="btn-signup" type="submit">LOGIN</button>
-        </form>
-
-        <p style="text-align:center;margin-top:10px;">
-          <a href="#" onclick="showUser();return false;"
-             style="font-size:11px;color:rgba(255,255,255,0.3);text-decoration:none;">
-            ‹ Kembali ke User
-          </a>
-        </p>
-      </div>
+        <button class="btn-signup" type="submit">LOGIN</button>
+      </form>
 
     </div>
 
@@ -212,7 +156,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       <div class="card-icon">🗓️</div>
       <h3 class="card-heading">Booking Online</h3>
       <p class="card-desc">Pesan layanan cuci mobil dengan mudah kapan saja melalui sistem booking online kami.</p>
-      <button class="card-btn"onclick="window.location.href='menu.php'">Mulai Booking</button>
+      <button class="card-btn" onclick="window.location.href='menu.php'">Mulai Booking</button>
     </div>
     <div class="card-item">
       <div class="card-icon">🕘</div>
@@ -255,40 +199,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <!-- FOOTER -->
 <footer class="footer">
   <div class="footer-container">
-
-    <!-- Kiri -->
     <div class="footer-col">
       <h3>Habibi Garage</h3>
-      <p>
-        Habibi Garage adalah solusi terbaik untuk perawatan kendaraan Anda.
-      </p>
-      <p>
-        Kami menghadirkan layanan cuci mobil yang bersih, cepat, dan berkualitas dengan hasil maksimal.
-        Kepuasan pelanggan adalah prioritas utama kami.
-      </p>
+      <p>Habibi Garage adalah solusi terbaik untuk perawatan kendaraan Anda.</p>
+      <p>Kami menghadirkan layanan cuci mobil yang bersih, cepat, dan berkualitas. Kepuasan pelanggan adalah prioritas utama kami.</p>
     </div>
-
-    <!-- Tengah -->
     <div class="footer-col">
-      <h4> Alamat</h4>
-      <p>
-         Jl. Sojar No.Depan, pasar,<br>
-         Kec. Jatibarang,<br>
-        Kabupaten Indramayu
-      </p>
+      <h4>Alamat</h4>
+      <p>Jl. Sojar No.Depan, pasar,<br>Kec. Jatibarang,<br>Kabupaten Indramayu</p>
     </div>
-
-    <!-- Kanan -->
     <div class="footer-col">
       <h4>Contact</h4>
       <p>Email: info@email.com</p>
       <p>Phone: +62 xxx-xxxx-xxxx</p>
       <p>WhatsApp: +62 xxx-xxxx-xxxx</p>
     </div>
-
   </div>
-
-  <!-- Bottom -->
   <div class="footer-bottom">
     <p>© 2026 Habibi Garage. All Rights Reserved.</p>
     <div class="footer-links">
@@ -297,22 +223,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
   </div>
 </footer>
-
-<script>
-  function showAdmin() {
-    document.getElementById('tab-user').style.display  = 'none';
-    document.getElementById('tab-admin').style.display = 'block';
-  }
-  function showUser() {
-    document.getElementById('tab-admin').style.display = 'none';
-    document.getElementById('tab-user').style.display  = 'block';
-  }
-
-  // Kalau POST admin gagal, otomatis buka form admin lagi
-  <?php if (($_ = $_POST['tipe'] ?? '') === 'admin' && $error): ?>
-  document.addEventListener('DOMContentLoaded', showAdmin);
-  <?php endif; ?>
-</script>
 
 </body>
 </html>
