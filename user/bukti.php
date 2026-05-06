@@ -158,7 +158,7 @@ if ($data['status'] !== 'lunas') {
                 Cetak Bukti
             </button>
 
-            <a href="dashboard.php" class="btn btn-outline-secondary">
+            <a href="profil.php" class="btn btn-outline-secondary">
                 Kembali
             </a>
         </div>

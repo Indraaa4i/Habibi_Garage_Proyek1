@@ -2,8 +2,7 @@
 session_start();
 include 'koneksi.php'; 
 
-// Hanya isi dari session kalau user memang sedang login
-// Ini mencegah data lama nyangkut di form saat tidak login
+// Pengambilan data session tetap sama seperti sebelumnya
 if (!empty($_SESSION['user_login'])) {
     $nama_awal = $_SESSION['nama_pelanggan'] ?? '';
     $telp_awal = $_SESSION['no_handphone']   ?? '';
@@ -23,18 +22,34 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['proses_booking'])) {
     $tanggal  = mysqli_real_escape_string($conn, $_POST['tanggal']);
     $jam      = mysqli_real_escape_string($conn, $_POST['jam']);
 
-    $sql = "INSERT INTO pemesanan (id_paket, nama_pelanggan, plat_mobil, no_telepon, tanggal, jam)
-            VALUES ('$id_paket', '$nama', '$plat', '$telp', '$tanggal', '$jam')";
+    // --- LOGIC PENGECEKAN JADWAL ---
+    // Cek apakah sudah ada pemesanan di tanggal dan jam yang sama
+    $cek_jadwal = mysqli_query($conn, "SELECT id_pemesanan FROM pemesanan 
+                                      WHERE tanggal = '$tanggal' AND jam = '$jam'");
 
-    if (mysqli_query($conn, $sql)) {
-        $id_terakhir = mysqli_insert_id($conn);
+    if (mysqli_num_rows($cek_jadwal) > 0) {
+        // Jika jadwal sudah ada di tabel pemesanan
         echo "<script>
-                alert('Pemesanan Berhasil!');
-                window.location.href='pembayaran.php?id=" . $id_terakhir . "';
+                alert('Maaf, jadwal pada tanggal $tanggal jam $jam sudah penuh. Silakan pilih waktu lain.');
+                window.history.back();
               </script>";
         exit;
     } else {
-        echo "<script>alert('Gagal menyimpan: " . mysqli_error($conn) . "');</script>";
+        // Jika jadwal kosong, langsung masukkan data (tanpa pending)
+        $sql = "INSERT INTO pemesanan (id_paket, nama_pelanggan, plat_mobil, no_telepon, tanggal, jam)
+                VALUES ('$id_paket', '$nama', '$plat', '$telp', '$tanggal', '$jam')";
+
+        if (mysqli_query($conn, $sql)) {
+            $id_terakhir = mysqli_insert_id($conn);
+            // Langsung arahkan ke halaman pembayaran dengan membawa ID pemesanan
+            echo "<script>
+                    alert('Jadwal tersedia! Menuju halaman pembayaran...');
+                    window.location.href='pembayaran.php?id=" . $id_terakhir . "';
+                  </script>";
+            exit;
+        } else {
+            echo "<script>alert('Gagal menyimpan: " . mysqli_error($conn) . "');</script>";
+        }
     }
 }
 ?>
@@ -105,9 +120,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['proses_booking'])) {
                         </select>
                     </div>
 
-                    <div class="col-md-6">
-                        <label class="form-label">Tanggal Kedatangan</label>
-                        <input type="date" id="bookingDate" name="tanggal" class="form-control shadow-sm" required>
+                   <div class="col-md-6">
+                         <label class="form-label">Tanggal Kedatangan</label>
+                             <input type="date" 
+                                id="bookingDate" 
+                                name="tanggal" 
+                                class="form-control shadow-sm" 
+                                min="<?= date('Y-m-d'); ?>" 
+                                required>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label">Pilih Jam</label>
