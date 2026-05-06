@@ -203,8 +203,8 @@ $query = mysqli_query($conn, "
         <?php else: ?>
             <div class="col-12">
                 <div class="empty-box">
-                    <h4>Belum Ada Pesanan</h4>
-                    <p>Anda belum memiliki pesanan cuci mobil saat ini.</p>
+                    <h4>Pesanan Tidak Ditemukan</h4>
+                    <p>Anda tidak memiliki cucian mobil saat ini</p>
                 </div>
             </div>
         <?php endif; ?>

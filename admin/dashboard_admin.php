@@ -82,7 +82,7 @@ if (isset($_POST['aksi']) && isset($_POST['id_pemesanan'])) {
         exit;
     }
 
-    // BATAL
+    // TOLAK PEMBAYARAN
     if ($aksi === 'batal') {
         mysqli_query($conn, "
             UPDATE pemesanan 
@@ -133,19 +133,6 @@ if (isset($_POST['aksi_menu'])) {
         ");
     }
 
-    if ($aksi === 'edit') {
-        $id_paket   = mysqli_real_escape_string($conn, $_POST['id_paket']);
-        $nama_paket = mysqli_real_escape_string($conn, $_POST['nama_paket']);
-        $harga      = mysqli_real_escape_string($conn, $_POST['harga']);
-        $deskripsi  = mysqli_real_escape_string($conn, $_POST['deskripsi']);
-
-        mysqli_query($conn, "
-            UPDATE paket_layanan 
-            SET nama_paket='$nama_paket', harga='$harga', deskripsi='$deskripsi'
-            WHERE id_paket='$id_paket'
-        ");
-    }
-
     if ($aksi === 'hapus') {
         $id_paket = mysqli_real_escape_string($conn, $_POST['id_paket']);
 
@@ -167,21 +154,16 @@ if (isset($_POST['aksi_pelanggan']) && $_POST['aksi_pelanggan'] === 'tambah_lang
 
     $nama_pelanggan = mysqli_real_escape_string($conn, $_POST['nama_pelanggan']);
     $no_telepon     = mysqli_real_escape_string($conn, $_POST['no_telepon']);
-    $plat_mobil     = mysqli_real_escape_string($conn, $_POST['plat_mobil']);
-    $jenis_mobil    = mysqli_real_escape_string($conn, $_POST['jenis_mobil']);
-    $warna_mobil    = mysqli_real_escape_string($conn, $_POST['warna_mobil']);
     $id_paket       = mysqli_real_escape_string($conn, $_POST['id_paket']);
     $tanggal        = mysqli_real_escape_string($conn, $_POST['tanggal']);
     $jam            = mysqli_real_escape_string($conn, $_POST['jam']);
 
     mysqli_query($conn, "
         INSERT INTO pemesanan (
-            nama_pelanggan, no_telepon, plat_mobil, jenis_mobil, warna_mobil,
-            id_paket, tanggal, jam, status, status_cuci, created_at
+            nama_pelanggan, no_telepon, id_paket, tanggal, jam, status, status_cuci, created_at
         )
         VALUES (
-            '$nama_pelanggan', '$no_telepon', '$plat_mobil', '$jenis_mobil', '$warna_mobil',
-            '$id_paket', '$tanggal', '$jam', 'proses', 'belum_dicuci', NOW()
+            '$nama_pelanggan', '$no_telepon', '$id_paket', '$tanggal', '$jam', 'pending', 'belum_dicuci', NOW()
         )
     ");
 
@@ -209,16 +191,6 @@ $q_konfirmasi = mysqli_query($conn, "
     JOIN paket_layanan pl ON p.id_paket = pl.id_paket
     WHERE p.status = 'pending'
     ORDER BY p.tanggal ASC, p.jam ASC
-");
-
-// recap lunas
-$q_recap = mysqli_query($conn, "
-    SELECT p.*, pl.nama_paket, pl.harga
-    FROM pemesanan p
-    JOIN paket_layanan pl ON p.id_paket = pl.id_paket
-    WHERE p.status = 'lunas'
-    ORDER BY p.created_at DESC
-    LIMIT 50
 ");
 
 // paket
@@ -251,7 +223,7 @@ $q_paket = mysqli_query($conn, "
         </li>
 
         <li class="menu-item" data-target="recap-section">Recap & Income</li>
-        <li class="menu-item" data-target="pengaturan-section">Pengaturan Menu</li>
+        <li class="menu-item" data-target="pengaturan-section">Pengaturan</li>
         <li class="menu-item logout-item" onclick="confirmLogout()">Logout</li>
     </ul>
 </div>
@@ -265,7 +237,7 @@ $q_paket = mysqli_query($conn, "
         </div>
     </div>
 
-    <!-- Dashboard -->
+    <!-- DASHBOARD -->
     <div id="dashboard-section" class="content-section active">
         <h1>Dashboard</h1>
         <p class="subtitle">Monitoring operasional real-time dari database.</p>
@@ -281,7 +253,6 @@ $q_paket = mysqli_query($conn, "
             </div>
         </div>
 
-        <!-- Tambah Pelanggan Langsung -->
         <div class="card">
             <h3>Tambah Pelanggan Langsung</h3>
             <form method="POST" class="form-paket">
@@ -290,9 +261,6 @@ $q_paket = mysqli_query($conn, "
                 <div class="form-grid">
                     <input type="text" name="nama_pelanggan" placeholder="Nama Pelanggan" required>
                     <input type="text" name="no_telepon" placeholder="No Telepon" required>
-                    <input type="text" name="plat_mobil" placeholder="Plat Mobil" required>
-                    <input type="text" name="jenis_mobil" placeholder="Jenis Mobil" required>
-                    <input type="text" name="warna_mobil" placeholder="Warna Mobil" required>
 
                     <select name="id_paket" required>
                         <option value="">Pilih Paket</option>
@@ -314,7 +282,6 @@ $q_paket = mysqli_query($conn, "
             </form>
         </div>
 
-        <!-- Semua Booking -->
         <div class="card">
             <h3>Semua Booking Masuk</h3>
             <table class="table" id="mainTable">
@@ -322,7 +289,6 @@ $q_paket = mysqli_query($conn, "
                     <tr>
                         <th>#</th>
                         <th>Pelanggan</th>
-                        <th>Kendaraan</th>
                         <th>Paket</th>
                         <th>Jadwal</th>
                         <th>Status Bayar</th>
@@ -339,10 +305,6 @@ $q_paket = mysqli_query($conn, "
                             <small><?= htmlspecialchars($row['no_telepon']) ?></small>
                         </td>
                         <td>
-                            <?= htmlspecialchars($row['plat_mobil']) ?><br>
-                            <small><?= htmlspecialchars($row['jenis_mobil']) ?> · <?= htmlspecialchars($row['warna_mobil']) ?></small>
-                        </td>
-                        <td>
                             <?= htmlspecialchars($row['nama_paket']) ?><br>
                             <small>Rp <?= number_format($row['harga'], 0, ',', '.') ?></small>
                         </td>
@@ -351,15 +313,12 @@ $q_paket = mysqli_query($conn, "
                             <small><?= htmlspecialchars($row['jam']) ?></small>
                         </td>
 
-                        <!-- STATUS BAYAR -->
                         <td>
                             <?php
                             $status = strtolower($row['status']);
                             $badgeClass = 'badge-pending';
 
-                            if ($status == 'proses') {
-                                $badgeClass = 'badge-proses';
-                            } elseif ($status == 'lunas') {
+                            if ($status == 'lunas') {
                                 $badgeClass = 'badge-lunas';
                             } elseif ($status == 'dibatalkan') {
                                 $badgeClass = 'badge-batal';
@@ -370,18 +329,15 @@ $q_paket = mysqli_query($conn, "
                             </span>
                         </td>
 
-                        <!-- STATUS CUCI -->
                         <td>
                             <?php
                             $cuci = strtolower($row['status_cuci']);
-                            $badgeCuci = 'badge-pending';
+                            $badgeCuci = 'badge-batal';
 
                             if ($cuci == 'diproses') {
                                 $badgeCuci = 'badge-proses';
                             } elseif ($cuci == 'selesai') {
                                 $badgeCuci = 'badge-lunas';
-                            } elseif ($cuci == 'belum_dicuci') {
-                                $badgeCuci = 'badge-batal';
                             }
                             ?>
                             <span class="badge <?= $badgeCuci ?>">
@@ -389,7 +345,6 @@ $q_paket = mysqli_query($conn, "
                             </span>
                         </td>
 
-                        <!-- AKSI STATUS CUCI -->
                         <td>
                             <form method="POST">
                                 <input type="hidden" name="id_pemesanan" value="<?= $row['id_pemesanan'] ?>">
@@ -408,14 +363,242 @@ $q_paket = mysqli_query($conn, "
                     </tr>
                     <?php endwhile; ?>
                     <?php if (!$ada): ?>
-                        <tr class="empty-row"><td colspan="8">Belum ada booking masuk.</td></tr>
+                        <tr class="empty-row"><td colspan="7">Belum ada booking masuk.</td></tr>
                     <?php endif; ?>
                 </tbody>
             </table>
         </div>
     </div>
 
-    <!-- SECTION LAIN tetap sama -->
+    <!-- KONFIRMASI PEMBAYARAN -->
+    <div id="konfirmasi-section" class="content-section">
+        <h1>Konfirmasi Pembayaran</h1>
+        <p class="subtitle">Cek bukti pembayaran pelanggan dan konfirmasi status pembayaran.</p>
+
+        <div class="card">
+            <h3>Daftar Menunggu Konfirmasi</h3>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Pelanggan</th>
+                        <th>Paket</th>
+                        <th>Jadwal</th>
+                        <th>Bukti Bayar</th>
+                        <th>Aksi</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php $no = 1; $ada = false; mysqli_data_seek($q_konfirmasi, 0); while ($row = mysqli_fetch_assoc($q_konfirmasi)): $ada = true; ?>
+                    <tr>
+                        <td><?= $no++ ?></td>
+                        <td>
+                            <strong><?= htmlspecialchars($row['nama_pelanggan']) ?></strong><br>
+                            <small><?= htmlspecialchars($row['no_telepon']) ?></small>
+                        </td>
+                        <td>
+                            <?= htmlspecialchars($row['nama_paket']) ?><br>
+                            <small>Rp <?= number_format($row['harga'], 0, ',', '.') ?></small>
+                        </td>
+                        <td>
+                            <?= date('d/m/Y', strtotime($row['tanggal'])) ?><br>
+                            <small><?= htmlspecialchars($row['jam']) ?></small>
+                        </td>
+                        <td>
+                            <?php if (!empty($row['bukti_bayar'])): ?>
+                                <a href="<?= htmlspecialchars($row['bukti_bayar']) ?>" target="_blank" class="btn-lunas">
+                                    Lihat Bukti</a>
+                                    <?php else: ?>
+                                        <span>Tidak ada bukti</span>
+                                        <?php endif; ?>
+                        </td>
+                        <td>
+                            <form method="POST" style="display:inline-block;">
+                                <input type="hidden" name="id_pemesanan" value="<?= $row['id_pemesanan'] ?>">
+                                <input type="hidden" name="aksi" value="lunas">
+                                <button type="submit" class="btn-lunas">✔ Lunas</button>
+                            </form>
+
+                            <form method="POST" style="display:inline-block;">
+                                <input type="hidden" name="id_pemesanan" value="<?= $row['id_pemesanan'] ?>">
+                                <input type="hidden" name="aksi" value="batal">
+                                <button type="submit" class="btn-batal">✖ Tolak</button>
+                            </form>
+                        </td>
+                    </tr>
+                    <?php endwhile; ?>
+                    <?php if (!$ada): ?>
+                        <tr class="empty-row"><td colspan="6">Belum ada pembayaran yang menunggu konfirmasi.</td></tr>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- RECAP -->
+    <div id="recap-section" class="content-section">
+        <h1>Recap & Income</h1>
+        <p class="subtitle">Ringkasan pendapatan harian, bulanan, dan histori transaksi.</p>
+
+        <div class="stats-container">
+            <div class="stat-card green">
+                <span>Income Hari Ini</span>
+                <h2>Rp <?= number_format($income_today, 0, ',', '.') ?></h2>
+            </div>
+            <div class="stat-card blue">
+                <span>Income Bulan Ini</span>
+                <h2>Rp <?= number_format($income_month, 0, ',', '.') ?></h2>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>Cari Recap Bulanan</h3>
+
+            <form method="GET" class="form-paket" style="margin-bottom:20px;">
+                <div class="form-grid">
+                    <select name="bulan">
+                        <option value="">Pilih Bulan</option>
+                        <?php for($i=1; $i<=12; $i++): ?>
+                            <option value="<?= $i ?>" <?= (isset($_GET['bulan']) && $_GET['bulan'] == $i) ? 'selected' : '' ?>>
+                                <?= date('F', mktime(0,0,0,$i,1)) ?>
+                            </option>
+                        <?php endfor; ?>
+                    </select>
+
+                    <select name="tahun">
+                        <option value="">Pilih Tahun</option>
+                        <?php for($y=date('Y'); $y>=2023; $y--): ?>
+                            <option value="<?= $y ?>" <?= (isset($_GET['tahun']) && $_GET['tahun'] == $y) ? 'selected' : '' ?>>
+                                <?= $y ?>
+                            </option>
+                        <?php endfor; ?>
+                    </select>
+
+                    <button type="submit" class="btn-lunas">Cari Recap</button>
+                </div>
+            </form>
+
+            <?php
+            $where = "WHERE p.status='lunas'";
+            if (!empty($_GET['bulan']) && !empty($_GET['tahun'])) {
+                $bulan = (int) $_GET['bulan'];
+                $tahun = (int) $_GET['tahun'];
+                $where .= " AND MONTH(p.tanggal)='$bulan' AND YEAR(p.tanggal)='$tahun'";
+            }
+
+            $q_filter = mysqli_query($conn, "
+                SELECT p.*, pl.nama_paket, pl.harga
+                FROM pemesanan p
+                JOIN paket_layanan pl ON p.id_paket = pl.id_paket
+                $where
+                ORDER BY p.tanggal DESC, p.jam DESC
+            ");
+
+            $q_total_filter = mysqli_query($conn, "
+                SELECT SUM(pl.harga) as total
+                FROM pemesanan p
+                JOIN paket_layanan pl ON p.id_paket = pl.id_paket
+                $where
+            ");
+            $total_filter = mysqli_fetch_assoc($q_total_filter)['total'] ?? 0;
+            ?>
+
+            <div style="margin-bottom:15px;">
+                <strong>Total Pendapatan:</strong> Rp <?= number_format($total_filter, 0, ',', '.') ?>
+            </div>
+
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Pelanggan</th>
+                        <th>Paket</th>
+                        <th>Tanggal</th>
+                        <th>Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php $no=1; $ada=false; while($row=mysqli_fetch_assoc($q_filter)): $ada=true; ?>
+                    <tr>
+                        <td><?= $no++ ?></td>
+                        <td><?= htmlspecialchars($row['nama_pelanggan']) ?></td>
+                        <td><?= htmlspecialchars($row['nama_paket']) ?></td>
+                        <td><?= date('d/m/Y', strtotime($row['tanggal'])) ?></td>
+                        <td>Rp <?= number_format($row['harga'], 0, ',', '.') ?></td>
+                    </tr>
+                    <?php endwhile; ?>
+                    <?php if(!$ada): ?>
+                        <tr class="empty-row"><td colspan="5">Tidak ada data recap.</td></tr>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- PENGATURAN -->
+    <div id="pengaturan-section" class="content-section">
+        <h1>Pengaturan</h1>
+        <p class="subtitle">Kelola paket layanan dan admin.</p>
+
+        <div class="card">
+            <h3>Tambah Paket</h3>
+            <form method="POST" class="form-paket">
+                <input type="hidden" name="aksi_menu" value="tambah">
+
+                <div class="form-grid">
+                    <input type="text" name="nama_paket" placeholder="Nama Paket" required>
+                    <input type="number" name="harga" placeholder="Harga" required>
+                    <input type="text" name="deskripsi" placeholder="Deskripsi" required>
+                </div>
+
+                <button type="submit" class="btn-lunas">Tambah Paket</button>
+            </form>
+        </div>
+
+        <div class="card">
+            <h3>Daftar Paket</h3>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Nama Paket</th>
+                        <th>Harga</th>
+                        <th>Deskripsi</th>
+                        <th>Aksi</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php $no=1; mysqli_data_seek($q_paket, 0); while($paket=mysqli_fetch_assoc($q_paket)): ?>
+                    <tr>
+                        <td><?= $no++ ?></td>
+                        <td><?= htmlspecialchars($paket['nama_paket']) ?></td>
+                        <td>Rp <?= number_format($paket['harga'], 0, ',', '.') ?></td>
+                        <td><?= htmlspecialchars($paket['deskripsi']) ?></td>
+                        <td>
+                            <form method="POST" onsubmit="return confirm('Hapus paket ini?')">
+                                <input type="hidden" name="aksi_menu" value="hapus">
+                                <input type="hidden" name="id_paket" value="<?= $paket['id_paket'] ?>">
+                                <button type="submit" class="btn-batal">Hapus</button>
+                            </form>
+                        </td>
+                    </tr>
+                    <?php endwhile; ?>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="card">
+            <h3>Tambah Admin Baru</h3>
+            <form method="POST" action="tambah_admin.php" class="form-paket">
+                <div class="form-grid">
+                    <input type="text" name="no_telepon" placeholder="No Telepon Admin" required>
+                    <input type="email" name="email" placeholder="Email Admin" required>
+                    <input type="password" name="password" placeholder="Password" required>
+                </div>
+                <button type="submit" class="btn-lunas">Tambah Admin</button>
+            </form>
+        </div>
+    </div>
 </div>
 
 <script src="../js/dashboard_admin.js"></script>
