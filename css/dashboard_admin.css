@@ -20,8 +20,8 @@ body {
 /* ── Sidebar ───────────────────────────────────────────── */
 .sidebar {
     width: 250px;
-    background: #fff;
-    border-right: 1px solid #ddd;
+    background: #0f1b2d;
+    border-right: 1px solid #dddddd;
     padding: 20px;
     position: fixed;
     height: 100vh;
@@ -53,13 +53,13 @@ body {
 }
 
 .sidebar ul li:hover {
-    background: #f9f9f9;
-    color: #3498db;
+    background: #a5c3ee;
+    color: #0b507e;
 }
 
 .sidebar ul li.active {
     background: #3498db;
-    color: #fff;
+    color: #ffffff;
     font-weight: bold;
 }
 
@@ -75,8 +75,8 @@ body {
 /* Logout */
 .logout-item {
     margin-top: auto;
-    border: 1px solid #fde2e2;
-    background: #fff5f5;
+    border: 1px solid #0f1b2d;
+    background: #0f1b2d;
     color: #e74c3c !important;
     font-weight: 600;
     text-align: left;

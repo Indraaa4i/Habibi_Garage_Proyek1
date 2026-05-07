@@ -67,8 +67,11 @@ if (isset($_POST['aksi']) && isset($_POST['id_pemesanan'])) {
     $id   = mysqli_real_escape_string($conn, $_POST['id_pemesanan']);
     $aksi = $_POST['aksi'];
 
-    // KONFIRMASI PEMBAYARAN → LUNAS
+    // =========================
+    // KONFIRMASI PEMBAYARAN
+    // =========================
     if ($aksi === 'lunas') {
+
         mysqli_query($conn, "
             UPDATE pemesanan 
             SET status='lunas'
@@ -82,8 +85,11 @@ if (isset($_POST['aksi']) && isset($_POST['id_pemesanan'])) {
         exit;
     }
 
+    // =========================
     // TOLAK PEMBAYARAN
+    // =========================
     if ($aksi === 'batal') {
+
         mysqli_query($conn, "
             UPDATE pemesanan 
             SET status='dibatalkan'
@@ -91,10 +97,33 @@ if (isset($_POST['aksi']) && isset($_POST['id_pemesanan'])) {
         ");
     }
 
+    // =========================
+    // ADMIN SETUJUI PEMBATALAN
+    // =========================
+    if ($aksi === 'setujui_pembatalan') {
+
+        mysqli_query($conn, "
+            UPDATE pemesanan 
+            SET status='dibatalkan'
+            WHERE id_pemesanan='$id'
+        ");
+    }
+
+    // =========================
+    // ADMIN TOLAK PEMBATALAN
+    // =========================
+    if ($aksi === 'tolak_pembatalan') {
+
+        mysqli_query($conn, "
+            UPDATE pemesanan 
+            SET status='pending'
+            WHERE id_pemesanan='$id'
+        ");
+    }
+
     header("Location: dashboard_admin.php");
     exit;
 }
-
 
 // ─────────────────────────────────────────────
 // UPDATE STATUS CUCI
@@ -122,7 +151,9 @@ if (isset($_POST['aksi_menu'])) {
 
     $aksi = $_POST['aksi_menu'];
 
+    // TAMBAH
     if ($aksi === 'tambah') {
+
         $nama_paket = mysqli_real_escape_string($conn, $_POST['nama_paket']);
         $harga      = mysqli_real_escape_string($conn, $_POST['harga']);
         $deskripsi  = mysqli_real_escape_string($conn, $_POST['deskripsi']);
@@ -133,7 +164,27 @@ if (isset($_POST['aksi_menu'])) {
         ");
     }
 
+    // EDIT
+    if ($aksi === 'edit') {
+
+        $id_paket   = mysqli_real_escape_string($conn, $_POST['id_paket']);
+        $nama_paket = mysqli_real_escape_string($conn, $_POST['nama_paket']);
+        $harga      = mysqli_real_escape_string($conn, $_POST['harga']);
+        $deskripsi  = mysqli_real_escape_string($conn, $_POST['deskripsi']);
+
+        mysqli_query($conn, "
+            UPDATE paket_layanan
+            SET 
+                nama_paket = '$nama_paket',
+                harga = '$harga',
+                deskripsi = '$deskripsi'
+            WHERE id_paket = '$id_paket'
+        ");
+    }
+
+    // HAPUS
     if ($aksi === 'hapus') {
+
         $id_paket = mysqli_real_escape_string($conn, $_POST['id_paket']);
 
         mysqli_query($conn, "
@@ -145,7 +196,6 @@ if (isset($_POST['aksi_menu'])) {
     header("Location: dashboard_admin.php");
     exit;
 }
-
 
 // ─────────────────────────────────────────────
 // TAMBAH PELANGGAN LANGSUNG (WALK-IN)
@@ -294,6 +344,7 @@ $q_paket = mysqli_query($conn, "
                         <th>Status Bayar</th>
                         <th>Status Cuci</th>
                         <th>Aksi Cuci</th>
+                        <th>Pembatalan</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -359,6 +410,44 @@ $q_paket = mysqli_query($conn, "
                                     Update
                                 </button>
                             </form>
+                        </td>
+                        <td>
+                        <?php if ($row['status'] == 'request_batal'): ?>
+
+                            <form method="POST" style="display:inline-block;">
+                                <input type="hidden" 
+                                    name="id_pemesanan" 
+                                    value="<?= $row['id_pemesanan'] ?>">
+
+                                <input type="hidden" 
+                                    name="aksi" 
+                                    value="setujui_pembatalan">
+
+                                <button type="submit" class="btn-batal">
+                                    Setujui
+                                </button>
+                            </form>
+
+                            <form method="POST" style="display:inline-block;">
+                                <input type="hidden" 
+                                    name="id_pemesanan" 
+                                    value="<?= $row['id_pemesanan'] ?>">
+
+                                <input type="hidden" 
+                                    name="aksi" 
+                                    value="tolak_pembatalan">
+
+                                <button type="submit" class="btn-lunas">
+                                    Tolak
+                                </button>
+                            </form>
+
+                        <?php else: ?>
+
+                            <span>-</span>
+
+                        <?php endif; ?>
+
                         </td>
                     </tr>
                     <?php endwhile; ?>
@@ -557,6 +646,7 @@ $q_paket = mysqli_query($conn, "
 
         <div class="card">
             <h3>Daftar Paket</h3>
+
             <table class="table">
                 <thead>
                     <tr>
@@ -567,22 +657,102 @@ $q_paket = mysqli_query($conn, "
                         <th>Aksi</th>
                     </tr>
                 </thead>
+
                 <tbody>
-                    <?php $no=1; mysqli_data_seek($q_paket, 0); while($paket=mysqli_fetch_assoc($q_paket)): ?>
-                    <tr>
-                        <td><?= $no++ ?></td>
-                        <td><?= htmlspecialchars($paket['nama_paket']) ?></td>
-                        <td>Rp <?= number_format($paket['harga'], 0, ',', '.') ?></td>
-                        <td><?= htmlspecialchars($paket['deskripsi']) ?></td>
-                        <td>
-                            <form method="POST" onsubmit="return confirm('Hapus paket ini?')">
-                                <input type="hidden" name="aksi_menu" value="hapus">
-                                <input type="hidden" name="id_paket" value="<?= $paket['id_paket'] ?>">
-                                <button type="submit" class="btn-batal">Hapus</button>
-                            </form>
-                        </td>
-                    </tr>
-                    <?php endwhile; ?>
+
+                <?php 
+                $no=1; 
+                mysqli_data_seek($q_paket, 0); 
+
+                while($paket=mysqli_fetch_assoc($q_paket)): 
+                ?>
+
+                <tr>
+                    <td><?= $no++ ?></td>
+
+                    <td><?= htmlspecialchars($paket['nama_paket']) ?></td>
+
+                    <td>
+                        Rp <?= number_format($paket['harga'], 0, ',', '.') ?>
+                    </td>
+
+                    <td><?= htmlspecialchars($paket['deskripsi']) ?></td>
+
+                    <td>
+
+                        <!-- BUTTON EDIT -->
+                        <button 
+                            type="button"
+                            class="btn-lunas"
+                            onclick="toggleEdit(<?= $paket['id_paket'] ?>)">
+                            Edit
+                        </button>
+
+                        <!-- HAPUS -->
+                        <form method="POST" 
+                            style="display:inline-block;"
+                            onsubmit="return confirm('Hapus paket ini?')">
+
+                            <input type="hidden" 
+                                name="aksi_menu" 
+                                value="hapus">
+
+                            <input type="hidden" 
+                                name="id_paket" 
+                                value="<?= $paket['id_paket'] ?>">
+
+                            <button type="submit" class="btn-batal">
+                                Hapus
+                            </button>
+                        </form>
+
+                    </td>
+                </tr>
+
+                <!-- FORM EDIT -->
+                <tr id="editRow<?= $paket['id_paket'] ?>" style="display:none;">
+                    <td colspan="5">
+
+                        <form method="POST" class="form-paket">
+
+                            <input type="hidden" 
+                                name="aksi_menu" 
+                                value="edit">
+
+                            <input type="hidden" 
+                                name="id_paket" 
+                                value="<?= $paket['id_paket'] ?>">
+
+                            <div class="form-grid">
+
+                                <input type="text"
+                                    name="nama_paket"
+                                    value="<?= htmlspecialchars($paket['nama_paket']) ?>"
+                                    required>
+
+                                <input type="number"
+                                    name="harga"
+                                    value="<?= $paket['harga'] ?>"
+                                    required>
+
+                                <input type="text"
+                                    name="deskripsi"
+                                    value="<?= htmlspecialchars($paket['deskripsi']) ?>"
+                                    required>
+
+                            </div>
+
+                            <button type="submit" class="btn-lunas">
+                                Simpan Perubahan
+                            </button>
+
+                        </form>
+
+                    </td>
+                </tr>
+
+                <?php endwhile; ?>
+
                 </tbody>
             </table>
         </div>
@@ -603,12 +773,22 @@ $q_paket = mysqli_query($conn, "
 
 <script src="../js/dashboard_admin.js"></script>
 <script>
-function confirmLogout() {
-    const keluar = confirm("Yakin ingin logout?");
-    if (keluar) {
-        window.location.href = "dashboard_admin.php?logout=true";
+    function toggleEdit(id) {
+
+    let row = document.getElementById("editRow" + id);
+
+    if (row.style.display === "none") {
+        row.style.display = "table-row";
+    } else {
+        row.style.display = "none";
     }
-}
+    }
+    function confirmLogout() {
+        const keluar = confirm("Yakin ingin logout?");
+        if (keluar) {
+            window.location.href = "dashboard_admin.php?logout=true";
+        }
+    }
 </script>
 </body>
 </html>
