@@ -226,11 +226,20 @@ if (isset($_POST['aksi_pelanggan']) && $_POST['aksi_pelanggan'] === 'tambah_lang
 // QUERY DATA
 // ─────────────────────────────────────────────
 
+// filter tanggal
+$filter_tanggal = '';
+$where_tanggal  = '';
+if (!empty($_GET['filter_tanggal'])) {
+    $filter_tanggal = mysqli_real_escape_string($conn, $_GET['filter_tanggal']);
+    $where_tanggal  = "WHERE p.tanggal = '$filter_tanggal'";
+}
+
 // semua booking
 $q_antrian = mysqli_query($conn, "
     SELECT p.*, pl.nama_paket, pl.harga
     FROM pemesanan p
     JOIN paket_layanan pl ON p.id_paket = pl.id_paket
+    $where_tanggal
     ORDER BY p.created_at DESC
 ");
 
@@ -334,6 +343,21 @@ $q_paket = mysqli_query($conn, "
 
         <div class="card">
             <h3>Semua Booking Masuk</h3>
+
+            <form method="GET" style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
+                <label for="filter_tanggal" style="font-weight:600;white-space:nowrap;">Filter Tanggal:</label>
+                <input type="date" id="filter_tanggal" name="filter_tanggal"
+                    value="<?= htmlspecialchars($_GET['filter_tanggal'] ?? '') ?>"
+                    style="padding:7px 12px;border:1px solid #ddd;border-radius:6px;font-size:14px;">
+                <button type="submit" class="btn-lunas" style="padding:7px 18px;">Tampilkan</button>
+                <?php if (!empty($_GET['filter_tanggal'])): ?>
+                    <a href="dashboard_admin.php" class="btn-batal" style="padding:7px 14px;text-decoration:none;border-radius:6px;font-size:13px;">&#x2715; Reset</a>
+                    <span style="color:#888;font-size:13px;">
+                        Menampilkan tanggal: <strong><?= date('d F Y', strtotime($_GET['filter_tanggal'])) ?></strong>
+                    </span>
+                <?php endif; ?>
+            </form>
+
             <table class="table" id="mainTable">
                 <thead>
                     <tr>
@@ -397,19 +421,33 @@ $q_paket = mysqli_query($conn, "
                         </td>
 
                         <td>
+                            <?php
+                            $cuci_now = strtolower($row['status_cuci']);
+                            if ($cuci_now === 'belum_dicuci') {
+                                $next_status  = 'diproses';
+                                $btn_label    = '&#9654; Mulai Cuci';
+                                $btn_class    = 'btn-cuci-mulai';
+                            } elseif ($cuci_now === 'diproses') {
+                                $next_status  = 'selesai';
+                                $btn_label    = '&#10003; Selesai Cuci';
+                                $btn_class    = 'btn-cuci-selesai';
+                            } else {
+                                $next_status  = null;
+                                $btn_label    = '';
+                                $btn_class    = '';
+                            }
+                            ?>
+                            <?php if ($next_status): ?>
                             <form method="POST">
                                 <input type="hidden" name="id_pemesanan" value="<?= $row['id_pemesanan'] ?>">
-
-                                <select name="status_cuci" required>
-                                    <option value="belum_dicuci" <?= $row['status_cuci'] == 'belum_dicuci' ? 'selected' : '' ?>>Belum Dicuci</option>
-                                    <option value="diproses" <?= $row['status_cuci'] == 'diproses' ? 'selected' : '' ?>>Diproses</option>
-                                    <option value="selesai" <?= $row['status_cuci'] == 'selesai' ? 'selected' : '' ?>>Selesai</option>
-                                </select>
-
-                                <button type="submit" name="aksi_cuci" class="btn-lunas" style="margin-top:5px;">
-                                    Update
+                                <input type="hidden" name="status_cuci" value="<?= $next_status ?>">
+                                <button type="submit" name="aksi_cuci" class="btn-lunas <?= $btn_class ?>">
+                                    <?= $btn_label ?>
                                 </button>
                             </form>
+                            <?php else: ?>
+                                <span style="color:#27ae60;font-weight:600;">&#10003; Selesai</span>
+                            <?php endif; ?>
                         </td>
                         <td>
                         <?php if ($row['status'] == 'request_batal'): ?>
