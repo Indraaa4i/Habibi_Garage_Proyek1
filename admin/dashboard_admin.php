@@ -38,12 +38,54 @@ if(isset($_GET['ajax_booking'])){
 ========================================================= */
 if(isset($_POST['next_status'])){
     $id = (int)$_POST['id_pemesanan'];
-    $q  = mysqli_query($conn,"SELECT status_cuci FROM pemesanan WHERE id_pemesanan='$id'");
-    $cur = mysqli_fetch_assoc($q)['status_cuci'] ?? 'belum_dicuci';
+
+    // Ambil data pemesanan lengkap
+    $q  = mysqli_query($conn,"
+        SELECT p.*, pl.nama_paket
+        FROM pemesanan p
+        JOIN paket_layanan pl ON p.id_paket = pl.id_paket
+        WHERE p.id_pemesanan='$id'
+    ");
+    $data_pesan = mysqli_fetch_assoc($q);
+    $cur = $data_pesan['status_cuci'] ?? 'belum_dicuci';
+
     $next = $cur === 'belum_dicuci' ? 'diproses'
           : ($cur === 'diproses'    ? 'selesai'
           :                          'selesai');
+
     mysqli_query($conn,"UPDATE pemesanan SET status_cuci='$next' WHERE id_pemesanan='$id'");
+
+    // Jika baru saja jadi selesai, kirim WA
+    if($next === 'selesai'){
+        $nama   = urlencode($data_pesan['nama_pelanggan']);
+        $paket  = urlencode($data_pesan['nama_paket']);
+        $plat   = urlencode($data_pesan['plat_mobil']);
+        $no_hp  = preg_replace('/[^0-9]/', '', $data_pesan['no_telepon']);
+        // Ubah awalan 0 jadi 62
+        if(substr($no_hp, 0, 1) === '0') $no_hp = '62' . substr($no_hp, 1);
+
+        $pesan = urlencode(
+            "Halo, {$data_pesan['nama_pelanggan']}! 👋
+
+" .
+            "Mobil Anda dengan plat *{$data_pesan['plat_mobil']}* sudah selesai dicuci. ✅
+" .
+            "Paket: *{$data_pesan['nama_paket']}*
+
+" .
+            "Silakan datang untuk mengambil kendaraan Anda.
+
+" .
+            "Terima kasih telah mempercayai *Habibi Garage*! 🚗✨"
+        );
+
+        $wa_url = "https://wa.me/{$no_hp}?text={$pesan}";
+
+        // Redirect ke halaman perantara yang buka WA lalu balik ke dashboard
+        header("Location: dashboard_admin.php?wa_url=" . urlencode($wa_url));
+        exit;
+    }
+
     header("Location: dashboard_admin.php");
     exit;
 }
@@ -552,6 +594,14 @@ Logout
 
 <div class="main">
 
+<?php if(!empty($_GET['wa_url'])): ?>
+<script>
+  // Buka WhatsApp di tab baru
+  window.open(<?= json_encode(urldecode($_GET['wa_url'])) ?>, '_blank');
+</script>
+<?php endif; ?>
+
+
 <!-- =========================================================
 DASHBOARD
 ========================================================= -->
@@ -759,63 +809,230 @@ BOOKING
 
 <?php if($page == 'booking'): ?>
 
-<div class="form-box">
+<?php
+// Ambil slot yang sudah terpesan hari ini untuk ditampilkan awal
+$slot_booked_today = [];
+$q_slot_today = mysqli_query($conn,"SELECT jam FROM pemesanan WHERE tanggal='".date('Y-m-d')."'");
+while($rs = mysqli_fetch_assoc($q_slot_today)) $slot_booked_today[] = $rs['jam'];
+?>
 
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:25px;align-items:start;">
+
+<!-- KIRI: Form -->
+<div class="form-box" style="max-width:100%;">
 <div class="box-title">
 <h3>Tambah Booking Pelanggan</h3>
 </div>
 
-<form method="POST">
+<form method="POST" id="formBookingAdmin">
+<input type="hidden" name="tambah_pelanggan" value="1">
 
-<input type="hidden"
-name="tambah_pelanggan"
-value="1">
-
-<input type="text"
-name="nama_pelanggan"
-placeholder="Nama Pelanggan"
-required>
-
-<input type="text"
-name="no_telepon"
-placeholder="No Telepon"
-required>
+<input type="text" name="nama_pelanggan" placeholder="Nama Pelanggan" required>
+<input type="text" name="no_telepon" placeholder="No Telepon" required>
 
 <select name="id_paket" required>
-
-<option value="">
-Pilih Paket
-</option>
-
+<option value="">Pilih Paket</option>
 <?php
 mysqli_data_seek($q_paket,0);
-
 while($p=mysqli_fetch_assoc($q_paket)):
 ?>
-
-<option value="<?= $p['id_paket'] ?>">
-<?= htmlspecialchars($p['nama_paket']) ?>
-</option>
-
+<option value="<?= $p['id_paket'] ?>"><?= htmlspecialchars($p['nama_paket']) ?></option>
 <?php endwhile; ?>
-
 </select>
 
-<input type="date"
-name="tanggal"
-required>
+<!-- Tanggal & jam disembunyikan, diisi otomatis dari kalender -->
+<input type="hidden" name="tanggal" id="inputTanggal" required>
+<input type="hidden" name="jam" id="inputJam" required>
 
-<input type="time"
-name="jam"
-required>
-
-<button type="submit">
-Tambah Booking
-</button>
-
-</form>
-
+<!-- Tampilan tanggal & jam yang dipilih -->
+<div id="pilihanInfo" style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:12px;padding:14px;font-size:14px;color:#0f1b2d;display:none;">
+  <div style="margin-bottom:4px;">📅 <strong id="labelTanggal">-</strong></div>
+  <div>🕐 <strong id="labelJam">-</strong></div>
 </div>
+<div id="pilihanWarning" style="background:#fff7ed;border:1px solid #fed7aa;border-radius:12px;padding:12px;font-size:13px;color:#92400e;display:none;">
+  ⚠️ Pilih tanggal dan jam dari kalender di sebelah kanan.
+</div>
+
+<button type="submit" onclick="return validasiForm()">Tambah Booking</button>
+</form>
+</div>
+
+<!-- KANAN: Kalender + Slot Jam -->
+<div class="form-box" style="max-width:100%;">
+<div class="box-title">
+<h3>Pilih Tanggal & Jam</h3>
+</div>
+
+<!-- Header navigasi bulan -->
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+  <button onclick="gantibulan(-1)" style="background:#f1f5f9;color:#0f1b2d;border-radius:8px;padding:6px 14px;font-size:18px;border:none;cursor:pointer;">‹</button>
+  <span id="labelBulanTahun" style="font-weight:700;font-size:15px;color:#0f1b2d;"></span>
+  <button onclick="gantibulan(1)" style="background:#f1f5f9;color:#0f1b2d;border-radius:8px;padding:6px 14px;font-size:18px;border:none;cursor:pointer;">›</button>
+</div>
+
+<!-- Kalender -->
+<table style="width:100%;border-spacing:4px;border-collapse:separate;">
+<tr>
+<?php foreach(['Min','Sen','Sel','Rab','Kam','Jum','Sab'] as $h): ?>
+<th style="text-align:center;font-size:11px;color:<?= $h==='Jum' ? '#ef5350' : '#9ca3af' ?>;padding:4px;font-weight:600;"><?= $h ?></th>
+<?php endforeach; ?>
+</tr>
+</table>
+<div id="gridKalender" style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:16px;"></div>
+
+<!-- Slot jam -->
+<div style="border-top:1px solid #eee;padding-top:14px;">
+  <div style="font-size:13px;font-weight:700;color:#0f1b2d;margin-bottom:10px;">
+    Slot Jam — <span id="labelTanggalSlot" style="color:#119cc2;">pilih tanggal dulu</span>
+  </div>
+  <div id="gridSlot" style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;">
+    <div style="grid-column:span 2;text-align:center;color:#9ca3af;font-size:13px;padding:16px 0;">
+      Klik tanggal untuk melihat slot jam
+    </div>
+  </div>
+</div>
+
+<!-- Legenda -->
+<div style="display:flex;gap:16px;margin-top:14px;flex-wrap:wrap;">
+  <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:#555;">
+    <span style="width:12px;height:12px;border-radius:3px;background:#e2f4ff;border:1px solid #119cc2;display:inline-block;"></span> Tersedia
+  </div>
+  <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:#555;">
+    <span style="width:12px;height:12px;border-radius:3px;background:#0f1b2d;display:inline-block;"></span> Dipilih
+  </div>
+  <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:#555;">
+    <span style="width:12px;height:12px;border-radius:3px;background:#fee2e2;border:1px solid #ef4444;display:inline-block;"></span> Penuh
+  </div>
+</div>
+
+</div><!-- /kanan -->
+</div><!-- /grid -->
+
+<script>
+const SEMUA_SLOT = [
+  '08:00 - 09:00','09:00 - 10:00','10:00 - 11:00','11:00 - 12:00',
+  '13:00 - 14:00','14:00 - 15:00','15:00 - 16:00'
+];
+const BULAN_ADM = ['Januari','Februari','Maret','April','Mei','Juni',
+                   'Juli','Agustus','September','Oktober','November','Desember'];
+const HARI_ADM  = ['Min','Sen','Sel','Rab','Kam','Jum','Sab'];
+
+let tglAktif   = null;
+let jamAktif   = null;
+let bulanView  = new Date().getMonth();
+let tahunView  = new Date().getFullYear();
+
+function gantibulan(arah){
+  bulanView += arah;
+  if(bulanView < 0){ bulanView = 11; tahunView--; }
+  if(bulanView > 11){ bulanView = 0; tahunView++; }
+  renderKalender();
+}
+
+function renderKalender(){
+  document.getElementById('labelBulanTahun').textContent =
+    BULAN_ADM[bulanView] + ' ' + tahunView;
+
+  const grid   = document.getElementById('gridKalender');
+  const today  = new Date(); today.setHours(0,0,0,0);
+  const awal   = new Date(tahunView, bulanView, 1).getDay();
+  const total  = new Date(tahunView, bulanView+1, 0).getDate();
+
+  let html = '';
+  // Offset awal
+  for(let i=0;i<awal;i++) html += '<div></div>';
+
+  for(let d=1;d<=total;d++){
+    const tgl  = new Date(tahunView, bulanView, d);
+    const dow  = tgl.getDay();
+    const tglStr = tahunView+'-'+String(bulanView+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+    const isPast   = tgl < today;
+    const isJumat  = dow === 5;
+    const isToday  = tgl.getTime() === today.getTime();
+    const isAktif  = tglStr === tglAktif;
+
+    let bg='#f7f8fc', color='#0f1b2d', cursor='pointer', border='1px solid transparent', opacity='1';
+    if(isAktif){ bg='#0f1b2d'; color='white'; }
+    else if(isToday){ bg='#e0f2fe'; border='1px solid #119cc2'; }
+    else if(isPast||isJumat){ bg='#e5e7eb'; color='#9ca3af'; cursor='not-allowed'; opacity='.6'; }
+
+    const disabled = (isPast||isJumat) ? 'disabled' : '';
+    html += `<div onclick="pilihTanggal('${tglStr}','${d} ${BULAN_ADM[bulanView]}')" ${disabled}
+      style="text-align:center;padding:8px 4px;border-radius:8px;font-size:13px;font-weight:600;
+             background:${bg};color:${color};cursor:${cursor};border:${border};opacity:${opacity};
+             transition:.15s;">
+      ${d}
+    </div>`;
+  }
+  grid.innerHTML = html;
+}
+
+function pilihTanggal(tglStr, labelStr){
+  tglAktif = tglStr;
+  jamAktif = null;
+  document.getElementById('inputTanggal').value = tglStr;
+  document.getElementById('inputJam').value = '';
+  document.getElementById('labelTanggalSlot').textContent = labelStr;
+  document.getElementById('pilihanInfo').style.display = 'none';
+  document.getElementById('labelTanggal').textContent = labelStr;
+  renderKalender();
+  muatSlot(tglStr);
+}
+
+function muatSlot(tglStr){
+  const grid = document.getElementById('gridSlot');
+  grid.innerHTML = '<div style="grid-column:span 2;text-align:center;color:#9ca3af;font-size:13px;padding:16px 0;">Memuat slot...</div>';
+
+  fetch('dashboard_admin.php?ajax_booking=1&tgl=' + tglStr)
+    .then(r => r.json())
+    .then(data => {
+      const terpesan = data.map(b => b.jam);
+      grid.innerHTML = SEMUA_SLOT.map(slot => {
+        const penuh   = terpesan.includes(slot);
+        const dipilih = slot === jamAktif;
+        let bg = penuh ? '#fee2e2' : (dipilih ? '#0f1b2d' : '#e2f4ff');
+        let color = penuh ? '#ef4444' : (dipilih ? 'white' : '#0f1b2d');
+        let border = penuh ? '1px solid #ef4444' : (dipilih ? 'none' : '1px solid #119cc2');
+        let cursor = penuh ? 'not-allowed' : 'pointer';
+        let strike = penuh ? 'text-decoration:line-through;' : '';
+        const disabled = penuh ? 'disabled' : '';
+        return `<div onclick="pilihJam('${slot}')" ${disabled}
+          style="padding:10px;border-radius:10px;text-align:center;font-size:13px;font-weight:600;
+                 background:${bg};color:${color};border:${border};cursor:${cursor};${strike}transition:.15s;">
+          ${slot}${penuh ? '<br><span style="font-size:10px;font-weight:400;">Penuh</span>' : ''}
+        </div>`;
+      }).join('');
+    })
+    .catch(() => {
+      grid.innerHTML = '<div style="grid-column:span 2;color:#ef4444;font-size:13px;text-align:center;">Gagal memuat slot.</div>';
+    });
+}
+
+function pilihJam(slot){
+  jamAktif = slot;
+  document.getElementById('inputJam').value = slot;
+  // Update tampilan info
+  const info = document.getElementById('pilihanInfo');
+  document.getElementById('labelTanggal').textContent =
+    document.getElementById('labelTanggalSlot').textContent;
+  document.getElementById('labelJam').textContent = slot;
+  info.style.display = 'block';
+  document.getElementById('pilihanWarning').style.display = 'none';
+  // Re-render slot biar highlight update
+  muatSlot(tglAktif);
+}
+
+function validasiForm(){
+  if(!tglAktif || !jamAktif){
+    document.getElementById('pilihanWarning').style.display = 'block';
+    return false;
+  }
+  return true;
+}
+
+// Init
+renderKalender();
+</script>
 
 <?php endif; ?>
 
