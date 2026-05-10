@@ -210,578 +210,881 @@ $page = $_GET['page'] ?? 'dashboard';
 
 <style>
 
-/* =========================================================
-   RESET
-========================================================= */
-
 *{
-    margin:0;
-    padding:0;
-    box-sizing:border-box;
-    font-family:'Poppins', sans-serif;
+margin:0;
+padding:0;
+box-sizing:border-box;
+font-family:'Poppins',sans-serif;
 }
 
 body{
-    background:#d9d9d9;
-    padding:25px;
-    color:#0f1b2d;
+background:#d9d9d9;
+padding:25px;
 }
-
-/* =========================================================
-   CONTAINER
-========================================================= */
 
 .container{
-    width:100%;
-    max-width:1450px;
-    margin:auto;
-    background:#fff;
-    border-radius:28px;
-    overflow:hidden;
-    box-shadow:0 10px 30px rgba(0,0,0,0.08);
+width:100%;
+max-width:1450px;
+margin:auto;
+background:white;
+border-radius:28px;
+overflow:hidden;
+box-shadow:0 10px 30px rgba(0,0,0,0.1);
 }
 
-/* =========================================================
-   NAVBAR
-========================================================= */
-
 .navbar{
-    background:#0f1b2d;
-    padding:30px 35px;
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    flex-wrap:wrap;
-    gap:20px;
+background:#0f1b2d;
+padding:35px;
+display:flex;
+justify-content:space-between;
+align-items:center;
+flex-wrap:wrap;
+gap:20px;
 }
 
 .logo h2{
-    color:white;
-    font-size:28px;
-    font-weight:600;
+color:white;
+font-size:28px;
 }
 
 .nav-links{
-    display:flex;
-    align-items:center;
-    gap:12px;
-    flex-wrap:wrap;
+display:flex;
+gap:12px;
+flex-wrap:wrap;
 }
 
 .nav-links a{
-    text-decoration:none;
-    color:#d8dbe2;
-    padding:12px 18px;
-    border-radius:12px;
-    font-size:14px;
-    transition:0.3s;
+text-decoration:none;
+color:#d8dbe2;
+padding:12px 18px;
+border-radius:12px;
+transition:0.3s;
+font-size:14px;
 }
 
 .nav-links a:hover,
 .nav-links .active{
-    background:white;
-    color:#0f1b2d;
+background:white;
+color:#0f1b2d;
 }
-
-/* =========================================================
-   MAIN
-========================================================= */
 
 .main{
-    padding:30px;
+padding:30px;
 }
 
-/* =========================================================
-   CARD STATISTIK
-========================================================= */
-
 .cards{
-    display:grid;
-    grid-template-columns:repeat(3,1fr);
-    gap:20px;
-    margin-bottom:30px;
+display:grid;
+grid-template-columns:repeat(3,1fr);
+gap:20px;
+margin-bottom:30px;
 }
 
 .card{
-    background:white;
-    padding:25px;
-    border-radius:22px;
-    box-shadow:0 8px 20px rgba(0,0,0,0.08);
+background:white;
+padding:25px;
+border-radius:22px;
+box-shadow:0 8px 20px rgba(0,0,0,0.08);
 }
 
 .card h5{
-    color:#777;
-    font-size:15px;
-    margin-bottom:10px;
+color:#777;
+margin-bottom:10px;
 }
 
 .card h2{
-    color:#0f1b2d;
-    font-size:32px;
-    margin-bottom:8px;
+font-size:30px;
+color:#0f1b2d;
+margin-bottom:10px;
 }
-
-.card p{
-    color:#63a375;
-    font-size:13px;
-}
-
-/* =========================================================
-   GRID
-========================================================= */
 
 .grid{
-    display:grid;
-    grid-template-columns:1.5fr 1fr;
-    gap:25px;
+display:grid;
+grid-template-columns:1.5fr 1fr;
+gap:25px;
 }
 
-/* =========================================================
-   BOX
-========================================================= */
-
-.box,
-.form-box,
-.table-box{
-    background:white;
-    padding:25px;
-    border-radius:22px;
-    box-shadow:0 8px 20px rgba(0,0,0,0.08);
+.box{
+background:white;
+padding:25px;
+border-radius:22px;
+box-shadow:0 8px 20px rgba(0,0,0,0.08);
 }
 
 .box-title{
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    margin-bottom:20px;
+display:flex;
+justify-content:space-between;
+align-items:center;
+margin-bottom:20px;
 }
-
-.box-title h3{
-    font-size:20px;
-}
-
-/* =========================================================
-   BOOKING ITEM
-========================================================= */
 
 .booking-item{
-    background:#f7f8fc;
-    padding:18px;
-    border-radius:18px;
-    margin-bottom:15px;
+background:#f7f8fc;
+padding:18px;
+border-radius:18px;
+margin-bottom:15px;
 }
 
 .booking-item h4{
-    color:#0f1b2d;
-    margin-bottom:6px;
+margin-bottom:5px;
+color:#0f1b2d;
 }
 
 .booking-item p{
-    color:#777;
-    font-size:14px;
-    margin-bottom:12px;
+color:#777;
+font-size:14px;
+margin-bottom:12px;
 }
 
 .time{
-    display:inline-block;
-    margin-top:10px;
-    background:#119cc2;
-    color:white;
-    padding:10px 16px;
-    border-radius:20px;
-    font-size:13px;
+background:#119cc2;
+color:white;
+padding:10px 15px;
+border-radius:20px;
+display:inline-block;
+font-size:13px;
+margin-top:10px;
 }
 
-/* =========================================================
-   FORM
-========================================================= */
-
 form{
-    display:flex;
-    flex-direction:column;
-    gap:15px;
+display:flex;
+flex-direction:column;
+gap:15px;
 }
 
 input,
 select{
-    width:100%;
-    padding:14px;
-    border-radius:12px;
-    border:1px solid #ddd;
-    outline:none;
-    font-size:14px;
+padding:14px;
+border-radius:12px;
+border:1px solid #ddd;
+outline:none;
 }
 
 button{
-    border:none;
-    padding:14px;
-    border-radius:12px;
-    background:#0f1b2d;
-    color:white;
-    font-weight:600;
-    cursor:pointer;
-    transition:0.3s;
+padding:14px;
+border:none;
+border-radius:12px;
+background:#0f1b2d;
+color:white;
+cursor:pointer;
+font-weight:600;
 }
 
-button:hover{
-    opacity:0.9;
+.form-box{
+background:white;
+padding:25px;
+border-radius:22px;
+box-shadow:0 8px 20px rgba(0,0,0,0.08);
+max-width:700px;
 }
-
-.edit{
-    background:#119cc2;
-}
-
-.delete{
-    background:#ef5350;
-}
-
-/* =========================================================
-   MENU ITEM
-========================================================= */
 
 .menu-item{
-    background:#f7f8fc;
-    padding:18px;
-    border-radius:16px;
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    margin-bottom:15px;
-}
-
-.menu-item h4{
-    margin-bottom:5px;
-}
-
-.menu-item p{
-    color:#777;
-    font-size:14px;
+background:#f7f8fc;
+padding:18px;
+border-radius:16px;
+display:flex;
+justify-content:space-between;
+align-items:center;
+margin-bottom:15px;
 }
 
 .action-btn{
-    display:flex;
-    gap:10px;
+display:flex;
+gap:10px;
 }
 
-/* =========================================================
-   TABLE
-========================================================= */
+.edit{
+background:#119cc2;
+}
+
+.delete{
+background:#ef5350;
+}
 
 .table-box{
-    overflow-x:auto;
+background:white;
+padding:25px;
+border-radius:22px;
+box-shadow:0 8px 20px rgba(0,0,0,0.08);
+overflow:auto;
 }
 
 table{
-    width:100%;
-    border-collapse:collapse;
+width:100%;
+border-collapse:collapse;
 }
 
 th{
-    background:#0f1b2d;
-    color:white;
-    padding:14px;
-    text-align:left;
-    font-size:14px;
+background:#0f1b2d;
+color:white;
+padding:14px;
+text-align:left;
+font-size:14px;
 }
 
 td{
-    padding:14px;
-    border-bottom:1px solid #eee;
-    font-size:14px;
+padding:14px;
+border-bottom:1px solid #eee;
+font-size:14px;
 }
 
-/* =========================================================
-   KALENDER
-========================================================= */
-
 .calendar{
-    width:100%;
-    border-spacing:10px;
+width:100%;
+border-spacing:10px;
 }
 
 .calendar td{
-    background:#f7f8fc;
-    padding:15px;
-    text-align:center;
-    border-radius:12px;
-    cursor:pointer;
-    transition:0.3s;
+background:#f7f8fc;
+padding:15px;
+border-radius:12px;
+text-align:center;
+cursor:pointer;
+transition:0.3s;
 }
 
 .calendar td:hover{
-    background:#0f1b2d;
-    color:white;
+background:#0f1b2d;
+color:white;
 }
-
-.active-date{
-    background:#0f1b2d !important;
-    color:white;
-}
-
-/* =========================================================
-   RESPONSIVE
-========================================================= */
 
 @media(max-width:1000px){
 
-    .cards,
-    .grid{
-        grid-template-columns:1fr;
-    }
-
-    .navbar{
-        flex-direction:column;
-        align-items:flex-start;
-    }
+.cards,
+.grid{
+grid-template-columns:1fr;
+}
 
 }
 
 </style>
 </head>
-
 <body>
 
 <div class="container">
 
-    <!-- =====================================================
-         NAVBAR
-    ====================================================== -->
+<div class="navbar">
 
-    <div class="navbar">
+<div class="logo">
+<h2>Habibi Garage</h2>
+</div>
 
-        <div class="logo">
-            <h2>Habibi Garage</h2>
-        </div>
+<div class="nav-links">
 
-        <div class="nav-links">
+<a href="?page=dashboard"
+class="<?= $page=='dashboard' ? 'active' : '' ?>">
+Dashboard
+</a>
 
-            <a href="?page=dashboard"
-            class="<?= $page=='dashboard' ? 'active' : '' ?>">
-                Dashboard
-            </a>
+<a href="?page=booking"
+class="<?= $page=='booking' ? 'active' : '' ?>">
+Booking
+</a>
 
-            <a href="?page=booking"
-            class="<?= $page=='booking' ? 'active' : '' ?>">
-                Booking
-            </a>
+<a href="?page=menu"
+class="<?= $page=='menu' ? 'active' : '' ?>">
+Menu
+</a>
 
-            <a href="?page=menu"
-            class="<?= $page=='menu' ? 'active' : '' ?>">
-                Menu
-            </a>
+<a href="?page=recap"
+class="<?= $page=='recap' ? 'active' : '' ?>">
+Recap
+</a>
 
-            <a href="?page=recap"
-            class="<?= $page=='recap' ? 'active' : '' ?>">
-                Recap
-            </a>
+<a href="?page=admin"
+class="<?= $page=='admin' ? 'active' : '' ?>">
+Admin
+</a>
 
-            <a href="?page=admin"
-            class="<?= $page=='admin' ? 'active' : '' ?>">
-                Admin
-            </a>
+<a href="?logout=true">
+Logout
+</a>
 
-            <a href="?logout=true">
-                Logout
-            </a>
+</div>
 
-        </div>
+</div>
 
-    </div>
+<div class="main">
 
-    <!-- =====================================================
-         MAIN
-    ====================================================== -->
+<!-- =========================================================
+DASHBOARD
+========================================================= -->
 
-    <div class="main">
+<?php if($page == 'dashboard'): ?>
 
-        <!-- =====================================================
-             DASHBOARD
-        ====================================================== -->
+<div class="cards">
 
-        <?php if($page == 'dashboard'): ?>
+<div class="card">
+<h5>Booking Hari Ini</h5>
+<h2><?= $total_booking ?></h2>
+<p>Total booking hari ini</p>
+</div>
 
-        <div class="cards">
+<div class="card">
+<h5>Konfirmasi Admin</h5>
+<h2><?= $total_pending ?></h2>
+<p>Menunggu konfirmasi</p>
+</div>
 
-            <div class="card">
-                <h5>Booking Hari Ini</h5>
-                <h2><?= $total_booking ?></h2>
-                <p>Total booking hari ini</p>
-            </div>
+<div class="card">
+<h5>Pendapatan Hari Ini</h5>
+<h2>Rp <?= number_format($income_today,0,',','.') ?></h2>
+<p>Total income hari ini</p>
+</div>
 
-            <div class="card">
-                <h5>Konfirmasi Admin</h5>
-                <h2><?= $total_pending ?></h2>
-                <p>Menunggu konfirmasi</p>
-            </div>
+</div>
 
-            <div class="card">
-                <h5>Pendapatan Hari Ini</h5>
-                <h2>
-                    Rp <?= number_format($income_today,0,',','.') ?>
-                </h2>
-                <p>Total income hari ini</p>
-            </div>
+<div class="grid">
 
-        </div>
+<div class="box">
 
-        <div class="grid">
+<div class="box-title">
+<h3>Booking Hari Ini</h3>
+<p><?= date('d F Y') ?></p>
+</div>
 
-            <!-- =============================================
-                 BOOKING HARI INI
-            ============================================== -->
+<?php while($row=mysqli_fetch_assoc($q_booking_today)): ?>
 
-            <div class="box">
+<div class="booking-item">
 
-                <div class="box-title">
-                    <h3>Booking Hari Ini</h3>
-                    <p><?= date('d F Y') ?></p>
-                </div>
+<h4><?= htmlspecialchars($row['nama_pelanggan']) ?></h4>
 
-                <?php while($row=mysqli_fetch_assoc($q_booking_today)): ?>
+<p>
+<?= htmlspecialchars($row['nama_paket']) ?>
+</p>
 
-                <div class="booking-item">
+<form method="POST">
 
-                    <h4>
-                        <?= htmlspecialchars($row['nama_pelanggan']) ?>
-                    </h4>
+<input type="hidden"
+name="id_pemesanan"
+value="<?= $row['id_pemesanan'] ?>">
 
-                    <p>
-                        <?= htmlspecialchars($row['nama_paket']) ?>
-                    </p>
+<select name="status_cuci">
 
-                    <form method="POST">
+<option value="belum_dicuci"
+<?= $row['status_cuci']=="belum_dicuci" ? 'selected' : '' ?>>
+Belum Dicuci
+</option>
 
-                        <input
-                            type="hidden"
-                            name="id_pemesanan"
-                            value="<?= $row['id_pemesanan'] ?>"
-                        >
+<option value="diproses"
+<?= $row['status_cuci']=="diproses" ? 'selected' : '' ?>>
+Diproses
+</option>
 
-                        <select name="status_cuci">
+<option value="selesai"
+<?= $row['status_cuci']=="selesai" ? 'selected' : '' ?>>
+Selesai
+</option>
 
-                            <option value="belum_dicuci"
-                            <?= $row['status_cuci']=="belum_dicuci" ? 'selected' : '' ?>>
-                                Belum Dicuci
-                            </option>
+</select>
 
-                            <option value="diproses"
-                            <?= $row['status_cuci']=="diproses" ? 'selected' : '' ?>>
-                                Diproses
-                            </option>
+<button type="submit" name="update_status">
+Update Status
+</button>
 
-                            <option value="selesai"
-                            <?= $row['status_cuci']=="selesai" ? 'selected' : '' ?>>
-                                Selesai
-                            </option>
+</form>
 
-                        </select>
+<div class="time">
+<?= htmlspecialchars($row['jam']) ?>
+</div>
 
-                        <button type="submit" name="update_status">
-                            Update Status
-                        </button>
+</div>
 
-                    </form>
+<?php endwhile; ?>
 
-                    <div class="time">
-                        <?= htmlspecialchars($row['jam']) ?>
-                    </div>
+</div>
 
-                </div>
+<div class="box">
 
-                <?php endwhile; ?>
+<div class="box-title">
+<h3>Kalender Booking</h3>
+</div>
 
-            </div>
+<table class="calendar">
 
-            <!-- =============================================
-                 KALENDER
-            ============================================== -->
+<tr>
+<td>1</td>
+<td>2</td>
+<td>3</td>
+<td>4</td>
+<td>5</td>
+<td>6</td>
+<td>7</td>
+</tr>
 
-            <div class="box">
+<tr>
+<td>8</td>
+<td>9</td>
+<td style="background:#0f1b2d;color:white;">10</td>
+<td>11</td>
+<td>12</td>
+<td>13</td>
+<td>14</td>
+</tr>
 
-                <div class="box-title">
-                    <h3>Kalender Booking</h3>
-                </div>
+<tr>
+<td>15</td>
+<td>16</td>
+<td>17</td>
+<td>18</td>
+<td>19</td>
+<td>20</td>
+<td>21</td>
+</tr>
 
-                <table class="calendar">
+<tr>
+<td>22</td>
+<td>23</td>
+<td>24</td>
+<td>25</td>
+<td>26</td>
+<td>27</td>
+<td>28</td>
+</tr>
 
-                    <tr>
-                        <td>1</td>
-                        <td>2</td>
-                        <td>3</td>
-                        <td>4</td>
-                        <td>5</td>
-                        <td>6</td>
-                        <td>7</td>
-                    </tr>
+</table>
 
-                    <tr>
-                        <td>8</td>
-                        <td>9</td>
-                        <td class="active-date">10</td>
-                        <td>11</td>
-                        <td>12</td>
-                        <td>13</td>
-                        <td>14</td>
-                    </tr>
+<div style="margin-top:20px;">
 
-                    <tr>
-                        <td>15</td>
-                        <td>16</td>
-                        <td>17</td>
-                        <td>18</td>
-                        <td>19</td>
-                        <td>20</td>
-                        <td>21</td>
-                    </tr>
+<h4 style="margin-bottom:15px;">
+Booking Hari Ini
+</h4>
 
-                    <tr>
-                        <td>22</td>
-                        <td>23</td>
-                        <td>24</td>
-                        <td>25</td>
-                        <td>26</td>
-                        <td>27</td>
-                        <td>28</td>
-                    </tr>
+<?php
+mysqli_data_seek($q_booking_today,0);
 
-                </table>
+while($b=mysqli_fetch_assoc($q_booking_today)):
+?>
 
-                <div style="margin-top:20px;">
+<div style="background:#f7f8fc;padding:12px;border-radius:12px;margin-bottom:10px;">
 
-                    <h4 style="margin-bottom:15px;">
-                        Booking Hari Ini
-                    </h4>
+<?= htmlspecialchars($b['nama_pelanggan']) ?>
+-
+<?= htmlspecialchars($b['jam']) ?>
 
-                    <?php
-                    mysqli_data_seek($q_booking_today,0);
+</div>
 
-                    while($b=mysqli_fetch_assoc($q_booking_today)):
-                    ?>
+<?php endwhile; ?>
 
-                    <div style="
-                        background:#f7f8fc;
-                        padding:12px;
-                        border-radius:12px;
-                        margin-bottom:10px;
-                    ">
+</div>
 
-                        <?= htmlspecialchars($b['nama_pelanggan']) ?>
-                        -
-                        <?= htmlspecialchars($b['jam']) ?>
+</div>
 
-                    </div>
+</div>
 
-                    <?php endwhile; ?>
+<?php endif; ?>
 
-                </div>
 
-            </div>
+<!-- =========================================================
+BOOKING
+========================================================= -->
 
-        </div>
+<?php if($page == 'booking'): ?>
 
-        <?php endif; ?>
+<div class="form-box">
 
-    </div>
+<div class="box-title">
+<h3>Tambah Booking Pelanggan</h3>
+</div>
+
+<form method="POST">
+
+<input type="hidden"
+name="tambah_pelanggan"
+value="1">
+
+<input type="text"
+name="nama_pelanggan"
+placeholder="Nama Pelanggan"
+required>
+
+<input type="text"
+name="no_telepon"
+placeholder="No Telepon"
+required>
+
+<select name="id_paket" required>
+
+<option value="">
+Pilih Paket
+</option>
+
+<?php
+mysqli_data_seek($q_paket,0);
+
+while($p=mysqli_fetch_assoc($q_paket)):
+?>
+
+<option value="<?= $p['id_paket'] ?>">
+<?= htmlspecialchars($p['nama_paket']) ?>
+</option>
+
+<?php endwhile; ?>
+
+</select>
+
+<input type="date"
+name="tanggal"
+required>
+
+<input type="time"
+name="jam"
+required>
+
+<button type="submit">
+Tambah Booking
+</button>
+
+</form>
+
+</div>
+
+<?php endif; ?>
+
+
+<!-- =========================================================
+MENU
+========================================================= -->
+
+<?php if($page == 'menu'): ?>
+
+<div class="form-box" style="margin-bottom:30px;">
+
+<div class="box-title">
+<h3>Tambah Menu</h3>
+</div>
+
+<form method="POST">
+
+<input type="hidden"
+name="aksi_menu"
+value="tambah">
+
+<input type="text"
+name="nama_paket"
+placeholder="Nama Paket"
+required>
+
+<input type="number"
+name="harga"
+placeholder="Harga"
+required>
+
+<input type="text"
+name="deskripsi"
+placeholder="Deskripsi"
+required>
+
+<button type="submit">
+Tambah Paket
+</button>
+
+</form>
+
+</div>
+
+<?php
+mysqli_data_seek($q_paket,0);
+
+while($paket=mysqli_fetch_assoc($q_paket)):
+?>
+
+<div class="menu-item">
+
+<div>
+
+<h4><?= htmlspecialchars($paket['nama_paket']) ?></h4>
+
+<p>
+Rp <?= number_format($paket['harga'],0,',','.') ?>
+</p>
+
+</div>
+
+<div class="action-btn">
+
+<button
+class="edit"
+onclick="toggleEdit(<?= $paket['id_paket'] ?>)">
+Edit
+</button>
+
+<form method="POST">
+
+<input type="hidden"
+name="aksi_menu"
+value="hapus">
+
+<input type="hidden"
+name="id_paket"
+value="<?= $paket['id_paket'] ?>">
+
+<button type="submit" class="delete">
+Delete
+</button>
+
+</form>
+
+</div>
+
+</div>
+
+<div id="edit<?= $paket['id_paket'] ?>"
+style="display:none; margin-bottom:20px;">
+
+<form method="POST">
+
+<input type="hidden"
+name="aksi_menu"
+value="edit">
+
+<input type="hidden"
+name="id_paket"
+value="<?= $paket['id_paket'] ?>">
+
+<input type="text"
+name="nama_paket"
+value="<?= htmlspecialchars($paket['nama_paket']) ?>">
+
+<input type="number"
+name="harga"
+value="<?= $paket['harga'] ?>">
+
+<input type="text"
+name="deskripsi"
+value="<?= htmlspecialchars($paket['deskripsi']) ?>">
+
+<button type="submit">
+Simpan Perubahan
+</button>
+
+</form>
+
+</div>
+
+<?php endwhile; ?>
+
+<?php endif; ?>
+
+
+<!-- =========================================================
+RECAP
+========================================================= -->
+
+<?php if($page == 'recap'): ?>
+
+<?php
+
+$where = "WHERE p.status='lunas'";
+
+if(!empty($_GET['bulan']) && !empty($_GET['tahun'])){
+
+    $bulan = (int) $_GET['bulan'];
+    $tahun = (int) $_GET['tahun'];
+
+    $where .= "
+    AND MONTH(p.tanggal)='$bulan'
+    AND YEAR(p.tanggal)='$tahun'
+    ";
+}
+
+$q_recap = mysqli_query($conn,"
+SELECT p.*, pl.nama_paket, pl.harga
+FROM pemesanan p
+JOIN paket_layanan pl ON p.id_paket = pl.id_paket
+$where
+ORDER BY p.tanggal DESC
+");
+
+$q_total = mysqli_query($conn,"
+SELECT SUM(pl.harga) as total
+FROM pemesanan p
+JOIN paket_layanan pl ON p.id_paket = pl.id_paket
+$where
+");
+
+$total_recap = mysqli_fetch_assoc($q_total)['total'] ?? 0;
+
+?>
+
+<div class="cards">
+
+<div class="card">
+<h5>Income Hari Ini</h5>
+<h2>Rp <?= number_format($income_today,0,',','.') ?></h2>
+<p>Pendapatan hari ini</p>
+</div>
+
+<div class="card">
+<h5>Income Bulan Ini</h5>
+<h2>Rp <?= number_format($income_month,0,',','.') ?></h2>
+<p>Pendapatan bulan sekarang</p>
+</div>
+
+<div class="card">
+<h5>Total Recap</h5>
+<h2>Rp <?= number_format($total_recap,0,',','.') ?></h2>
+<p>Total hasil filter</p>
+</div>
+
+</div>
+
+<div class="form-box"
+style="max-width:100%; margin-bottom:30px;">
+
+<div class="box-title">
+<h3>Filter Recap Pendapatan</h3>
+</div>
+
+<form method="GET">
+
+<input type="hidden"
+name="page"
+value="recap">
+
+<select name="bulan">
+
+<option value="">
+Pilih Bulan
+</option>
+
+<?php for($i=1; $i<=12; $i++): ?>
+
+<option value="<?= $i ?>"
+
+<?= (isset($_GET['bulan']) && $_GET['bulan']==$i)
+? 'selected'
+: '' ?>>
+
+<?= date('F', mktime(0,0,0,$i,1)) ?>
+
+</option>
+
+<?php endfor; ?>
+
+</select>
+
+<select name="tahun">
+
+<option value="">
+Pilih Tahun
+</option>
+
+<?php for($y=date('Y'); $y>=2023; $y--): ?>
+
+<option value="<?= $y ?>"
+
+<?= (isset($_GET['tahun']) && $_GET['tahun']==$y)
+? 'selected'
+: '' ?>>
+
+<?= $y ?>
+
+</option>
+
+<?php endfor; ?>
+
+</select>
+
+<button type="submit">
+Cari Recap
+</button>
+
+</form>
+
+</div>
+
+<div class="table-box">
+
+<div class="box-title">
+<h3>Data Pendapatan</h3>
+</div>
+
+<table>
+
+<tr>
+<th>No</th>
+<th>Pelanggan</th>
+<th>Paket</th>
+<th>Tanggal</th>
+<th>Total</th>
+</tr>
+
+<?php
+$no = 1;
+
+while($row=mysqli_fetch_assoc($q_recap)):
+?>
+
+<tr>
+
+<td><?= $no++ ?></td>
+
+<td>
+<?= htmlspecialchars($row['nama_pelanggan']) ?>
+</td>
+
+<td>
+<?= htmlspecialchars($row['nama_paket']) ?>
+</td>
+
+<td>
+<?= date('d-m-Y', strtotime($row['tanggal'])) ?>
+</td>
+
+<td>
+Rp <?= number_format($row['harga'],0,',','.') ?>
+</td>
+
+</tr>
+
+<?php endwhile; ?>
+
+</table>
+
+</div>
+
+<?php endif; ?>
+
+
+<!-- =========================================================
+ADMIN
+========================================================= -->
+
+<?php if($page == 'admin'): ?>
+
+<div class="form-box">
+
+<div class="box-title">
+<h3>Tambah Admin Baru</h3>
+</div>
+
+<form method="POST" action="tambah_admin.php">
+
+<input type="text"
+name="no_telepon"
+placeholder="No Telepon Admin"
+required>
+
+<input type="email"
+name="email"
+placeholder="Email Admin"
+required>
+
+<input type="password"
+name="password"
+placeholder="Password"
+required>
+
+<button type="submit">
+Tambah Admin
+</button>
+
+</form>
+
+</div>
+
+<?php endif; ?>
+
+</div>
 
 </div>
 
@@ -789,13 +1092,13 @@ td{
 
 function toggleEdit(id){
 
-    let x = document.getElementById("edit"+id);
+let x = document.getElementById("edit"+id);
 
-    if(x.style.display == "none"){
-        x.style.display = "block";
-    }else{
-        x.style.display = "none";
-    }
+if(x.style.display=="none"){
+x.style.display="block";
+}else{
+x.style.display="none";
+}
 
 }
 
