@@ -15,6 +15,42 @@ if (!isset($_SESSION['status']) || $_SESSION['status'] !== 'login') {
 include '../user/koneksi.php';
 
 /* =========================================================
+   AJAX: BOOKING PER TANGGAL (untuk kalender)
+========================================================= */
+if(isset($_GET['ajax_booking'])){
+    $tgl = mysqli_real_escape_string($conn, $_GET['tgl']);
+    $q = mysqli_query($conn,"
+        SELECT p.*, pl.nama_paket, pl.harga
+        FROM pemesanan p
+        JOIN paket_layanan pl ON p.id_paket = pl.id_paket
+        WHERE p.tanggal = '$tgl'
+        ORDER BY p.jam ASC
+    ");
+    $rows = [];
+    while($r = mysqli_fetch_assoc($q)) $rows[] = $r;
+    header('Content-Type: application/json');
+    echo json_encode($rows);
+    exit;
+}
+
+/* =========================================================
+   UPDATE STATUS CUCI — ONE-CLICK (belum_dicuci→diproses→selesai)
+========================================================= */
+if(isset($_POST['next_status'])){
+    $id = (int)$_POST['id_pemesanan'];
+    $q  = mysqli_query($conn,"SELECT status_cuci FROM pemesanan WHERE id_pemesanan='$id'");
+    $cur = mysqli_fetch_assoc($q)['status_cuci'] ?? 'belum_dicuci';
+    $next = $cur === 'belum_dicuci' ? 'diproses'
+          : ($cur === 'diproses'    ? 'selesai'
+          :                          'selesai');
+    mysqli_query($conn,"UPDATE pemesanan SET status_cuci='$next' WHERE id_pemesanan='$id'");
+    header("Location: dashboard_admin.php");
+    exit;
+}
+
+
+
+/* =========================================================
    STATISTIK
 ========================================================= */
 
@@ -455,6 +491,18 @@ grid-template-columns:1fr;
 
 }
 
+
+/* Override hover untuk kalender */
+.calendar td[data-disabled]:hover {
+  background: #e5e7eb !important;
+  color: #9ca3af !important;
+  cursor: not-allowed !important;
+}
+.calendar td[data-today]:hover {
+  background: #0f1b2d !important;
+  color: white !important;
+}
+
 </style>
 </head>
 <body>
@@ -551,35 +599,33 @@ DASHBOARD
 <?= htmlspecialchars($row['nama_paket']) ?>
 </p>
 
-<form method="POST">
-
-<input type="hidden"
-name="id_pemesanan"
-value="<?= $row['id_pemesanan'] ?>">
-
-<select name="status_cuci">
-
-<option value="belum_dicuci"
-<?= $row['status_cuci']=="belum_dicuci" ? 'selected' : '' ?>>
-Belum Dicuci
-</option>
-
-<option value="diproses"
-<?= $row['status_cuci']=="diproses" ? 'selected' : '' ?>>
-Diproses
-</option>
-
-<option value="selesai"
-<?= $row['status_cuci']=="selesai" ? 'selected' : '' ?>>
-Selesai
-</option>
-
-</select>
-
-<button type="submit" name="update_status">
-Update Status
-</button>
-
+<?php
+$sc = $row['status_cuci'];
+$btn_label = $sc === 'belum_dicuci' ? '&#9654; Mulai Proses'
+           : ($sc === 'diproses'    ? '&#10004; Selesai Dicuci'
+           :                         '&#10004; Sudah Selesai');
+$btn_color = $sc === 'belum_dicuci' ? '#119cc2'
+           : ($sc === 'diproses'    ? '#22c55e'
+           :                         '#9ca3af');
+$btn_disabled = $sc === 'selesai' ? 'disabled' : '';
+$badge_label  = $sc === 'belum_dicuci' ? 'Belum Dicuci'
+              : ($sc === 'diproses'    ? 'Diproses'
+              :                         'Selesai');
+$badge_color  = $sc === 'belum_dicuci' ? '#f59e0b'
+              : ($sc === 'diproses'    ? '#3b82f6'
+              :                         '#22c55e');
+?>
+<div style="margin-bottom:8px;">
+  <span style="font-size:12px;font-weight:600;color:white;background:<?= $badge_color ?>;padding:3px 10px;border-radius:20px;">
+    <?= $badge_label ?>
+  </span>
+</div>
+<form method="POST" style="display:block;">
+  <input type="hidden" name="id_pemesanan" value="<?= $row['id_pemesanan'] ?>">
+  <button type="submit" name="next_status" <?= $btn_disabled ?>
+    style="background:<?= $btn_color ?>;padding:10px 16px;border-radius:10px;font-size:13px;width:100%;<?= $sc==='selesai' ? 'opacity:.5;cursor:not-allowed;' : '' ?>">
+    <?= $btn_label ?>
+  </button>
 </form>
 
 <div class="time">
@@ -599,48 +645,82 @@ Update Status
 </div>
 
 <table class="calendar">
-
 <tr>
-<td>1</td>
-<td>2</td>
-<td>3</td>
-<td>4</td>
-<td>5</td>
-<td>6</td>
-<td>7</td>
+<th style="color:#777;font-size:12px;padding:8px;text-align:center;">Min</th>
+<th style="color:#777;font-size:12px;padding:8px;text-align:center;">Sen</th>
+<th style="color:#777;font-size:12px;padding:8px;text-align:center;">Sel</th>
+<th style="color:#777;font-size:12px;padding:8px;text-align:center;">Rab</th>
+<th style="color:#777;font-size:12px;padding:8px;text-align:center;">Kam</th>
+<th style="color:#ef5350;font-size:12px;padding:8px;text-align:center;">Jum</th>
+<th style="color:#777;font-size:12px;padding:8px;text-align:center;">Sab</th>
 </tr>
+<?php
+$tahun_kal  = (int)date('Y');
+$bulan_kal  = (int)date('m');
+$hari_ini_n = (int)date('j');
+$total_hari = (int)date('t');
+$awal_dow   = (int)date('w', mktime(0,0,0,$bulan_kal,1,$tahun_kal)); // 0=Min
 
-<tr>
-<td>8</td>
-<td>9</td>
-<td style="background:#0f1b2d;color:white;">10</td>
-<td>11</td>
-<td>12</td>
-<td>13</td>
-<td>14</td>
-</tr>
+// Ambil semua tanggal yang ada booking bulan ini
+$tgl_booking = [];
+$q_kal = mysqli_query($conn,"
+    SELECT DISTINCT DAY(tanggal) as hari
+    FROM pemesanan
+    WHERE MONTH(tanggal)='$bulan_kal' AND YEAR(tanggal)='$tahun_kal'
+");
+while($rk = mysqli_fetch_assoc($q_kal)) $tgl_booking[] = (int)$rk['hari'];
 
-<tr>
-<td>15</td>
-<td>16</td>
-<td>17</td>
-<td>18</td>
-<td>19</td>
-<td>20</td>
-<td>21</td>
-</tr>
+$col = 0;
+echo '<tr>';
+// Offset kolom awal
+for($i=0; $i<$awal_dow; $i++){
+    echo '<td style="background:transparent;border:none;"></td>';
+    $col++;
+}
+for($d=1; $d<=$total_hari; $d++){
+    if($col==7){ echo '</tr><tr>'; $col=0; }
+    $dow_hari = ($awal_dow + $d - 1) % 7;
+    $is_past  = $d < $hari_ini_n;
+    $is_today = $d === $hari_ini_n;
+    $is_jumat = $dow_hari === 5;
+    $ada_booking = in_array($d, $tgl_booking);
 
-<tr>
-<td>22</td>
-<td>23</td>
-<td>24</td>
-<td>25</td>
-<td>26</td>
-<td>27</td>
-<td>28</td>
-</tr>
+    $tgl_str = date('Y-m-d', mktime(0,0,0,$bulan_kal,$d,$tahun_kal));
 
+    $style = '';
+    $extra = '';
+    if($is_today){
+        $style = 'background:#0f1b2d;color:white;font-weight:700;';
+        $extra = 'data-today="1"';
+    } elseif($is_past || $is_jumat){
+        $style = 'background:#e5e7eb;color:#9ca3af;cursor:not-allowed;opacity:.6;';
+        $extra = 'data-disabled="1"';
+    } elseif($ada_booking){
+        $style = 'background:#dbeafe;color:#1e40af;font-weight:600;';
+    }
+
+    $dot = $ada_booking && !$is_past && !$is_jumat
+         ? '<span style="display:block;width:5px;height:5px;border-radius:50%;background:#119cc2;margin:3px auto 0;"></span>'
+         : '';
+
+    echo "<td style='{$style}' {$extra} data-tgl='{$tgl_str}' onclick='klikKalender(this)'>{$d}{$dot}</td>";
+    $col++;
+}
+// Sisa kolom
+while($col<7){ echo '<td style="background:transparent;border:none;"></td>'; $col++; }
+echo '</tr>';
+?>
 </table>
+<div id="panelKalender" style="display:none;margin-top:20px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:14px;padding:18px;">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+    <h4 id="panelTanggalLabel" style="color:#0f1b2d;font-size:14px;"></h4>
+    <button onclick="document.getElementById('panelKalender').style.display='none'"
+      style="background:none;border:none;color:#9ca3af;font-size:18px;cursor:pointer;padding:0;line-height:1;">&#215;</button>
+  </div>
+  <div id="panelKalenderIsi">
+    <p style="color:#9ca3af;font-size:13px;">Klik tanggal untuk melihat booking.</p>
+  </div>
+</div>
 
 <div style="margin-top:20px;">
 
@@ -1102,6 +1182,62 @@ x.style.display="none";
 
 }
 
+</script>
+
+
+
+<script>
+const BULAN_KAL = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+
+function klikKalender(el) {
+  if (el.dataset.disabled) return;
+  const tgl = el.dataset.tgl;
+  if (!tgl) return;
+
+  // Reset highlight semua cell
+  document.querySelectorAll('.calendar td[data-tgl]').forEach(t => {
+    if (t.dataset.today) { t.style.background='#0f1b2d'; t.style.color='white'; return; }
+    if (t.dataset.disabled) { t.style.background='#e5e7eb'; t.style.color='#9ca3af'; return; }
+    t.style.background = '#f7f8fc';
+    t.style.color = '';
+  });
+  if (!el.dataset.today) { el.style.background = '#119cc2'; el.style.color = 'white'; }
+
+  const panel = document.getElementById('panelKalender');
+  const label = document.getElementById('panelTanggalLabel');
+  const isi   = document.getElementById('panelKalenderIsi');
+
+  const parts = tgl.split('-');
+  label.textContent = 'Booking ' + parseInt(parts[2]) + ' ' + BULAN_KAL[parseInt(parts[1])-1] + ' ' + parts[0];
+  isi.innerHTML = '<p style="color:#9ca3af;font-size:13px;">Memuat...</p>';
+  panel.style.display = 'block';
+
+  fetch('dashboard_admin.php?ajax_booking=1&tgl=' + tgl)
+    .then(r => r.json())
+    .then(data => {
+      if (!data.length) {
+        isi.innerHTML = '<p style="color:#9ca3af;font-size:13px;">Tidak ada booking pada tanggal ini.</p>';
+        return;
+      }
+      const statusColor = { belum_dicuci:'#f59e0b', diproses:'#3b82f6', selesai:'#22c55e' };
+      const statusLabel = { belum_dicuci:'Belum Dicuci', diproses:'Diproses', selesai:'Selesai' };
+      isi.innerHTML = data.map(b => `
+        <div style="background:white;border-radius:10px;padding:12px 14px;margin-bottom:10px;border:1px solid #e0f2fe;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+            <span style="font-weight:600;color:#0f1b2d;">${b.nama_pelanggan}</span>
+            <span style="font-size:11px;font-weight:600;color:white;background:${statusColor[b.status_cuci]||'#9ca3af'};padding:2px 8px;border-radius:12px;">
+              ${statusLabel[b.status_cuci]||b.status_cuci}
+            </span>
+          </div>
+          <div style="font-size:12px;color:#555;">${b.nama_paket} &middot; <strong>${b.jam}</strong></div>
+          <div style="font-size:11px;color:#9ca3af;margin-top:4px;">Plat: ${b.plat_mobil}</div>
+        </div>
+      `).join('');
+    })
+    .catch(() => {
+      isi.innerHTML = '<p style="color:#ef5350;font-size:13px;">Gagal memuat data.</p>';
+    });
+}
 </script>
 
 </body>

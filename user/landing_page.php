@@ -162,7 +162,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       <div class="card-icon">🕘</div>
       <h3 class="card-heading">Bebas Atur Jadwal</h3>
       <p class="card-desc">Tentukan sendiri waktu pencucian sesuai aktivitas Anda tanpa perlu antri.</p>
-      <button class="card-btn">Atur Jadwal</button>
+      <button class="card-btn" onclick="window.location.href='jadwal.php'">Cek Jadwal</button>
     </div>
     <div class="card-item">
       <div class="card-icon">🕒</div>
