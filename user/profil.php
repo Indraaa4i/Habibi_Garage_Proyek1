@@ -38,10 +38,10 @@ if (isset($_POST['batalkan_booking'])) {
             WHERE id_pemesanan = '$id_batal'
         ");
 
-        echo "<script>alert('Booking berhasil dibatalkan.'); window.location='profile.php';</script>";
+        echo "<script>alert('Booking berhasil dibatalkan.'); window.location='profil.php';</script>";
         exit;
     } else {
-        echo "<script>alert('Booking tidak dapat dibatalkan.'); window.location='profile.php';</script>";
+        echo "<script>alert('Booking tidak dapat dibatalkan.'); window.location='profil.php';</script>";
         exit;
     }
 }
