@@ -9,22 +9,56 @@ if (empty($_SESSION['user_login'])) {
 }
 
 $no_hp = $_SESSION['no_handphone'];
-$plat  = $_SESSION['plat_mobil'];
+
+/* =========================================================
+   HANDLE TAMBAH PLAT BARU
+   ========================================================= */
+if (isset($_POST['tambah_plat'])) {
+    $plat_baru = strtoupper(trim(mysqli_real_escape_string($conn, $_POST['plat_baru'])));
+
+    if ($plat_baru !== '') {
+        // Simpan plat ke session (array plat)
+        if (!isset($_SESSION['daftar_plat'])) {
+            $_SESSION['daftar_plat'] = [$_SESSION['plat_mobil']];
+        }
+        if (!in_array($plat_baru, $_SESSION['daftar_plat'])) {
+            $_SESSION['daftar_plat'][] = $plat_baru;
+        }
+    }
+    header('Location: profil.php');
+    exit;
+}
+
+/* =========================================================
+   HANDLE HAPUS PLAT
+   ========================================================= */
+if (isset($_POST['hapus_plat'])) {
+    $plat_hapus = strtoupper(trim($_POST['plat_hapus']));
+    // Jangan hapus plat utama (pertama)
+    if (isset($_SESSION['daftar_plat']) && $plat_hapus !== strtoupper($_SESSION['plat_mobil'])) {
+        $_SESSION['daftar_plat'] = array_values(
+            array_filter($_SESSION['daftar_plat'], fn($p) => strtoupper($p) !== $plat_hapus)
+        );
+    }
+    header('Location: profil.php');
+    exit;
+}
 
 /* =========================================================
    HANDLE BATAL BOOKING
-   Boleh batal jika:
-   - status = pending
-   - atau status = lunas DAN status_cuci = belum_dicuci
    ========================================================= */
 if (isset($_POST['batalkan_booking'])) {
     $id_batal = (int) $_POST['id_pemesanan'];
+
+    // Ambil semua plat milik user
+    $plat_list = $_SESSION['daftar_plat'] ?? [$_SESSION['plat_mobil']];
+    $plat_sql  = implode("','", array_map(fn($p) => strtoupper(str_replace(' ', '', $p)), $plat_list));
 
     $cek = mysqli_query($conn, "
         SELECT * FROM pemesanan
         WHERE id_pemesanan = '$id_batal'
         AND no_telepon = '$no_hp'
-        AND UPPER(REPLACE(plat_mobil,' ','')) = REPLACE('$plat',' ','')
+        AND UPPER(REPLACE(plat_mobil,' ','')) IN ('$plat_sql')
         AND (
             status = 'pending'
             OR (status = 'lunas' AND status_cuci = 'belum_dicuci')
@@ -32,12 +66,7 @@ if (isset($_POST['batalkan_booking'])) {
     ");
 
     if (mysqli_num_rows($cek) > 0) {
-        mysqli_query($conn, "
-            UPDATE pemesanan 
-            SET status = 'dibatalkan'
-            WHERE id_pemesanan = '$id_batal'
-        ");
-
+        mysqli_query($conn, "UPDATE pemesanan SET status = 'dibatalkan' WHERE id_pemesanan = '$id_batal'");
         echo "<script>alert('Booking berhasil dibatalkan.'); window.location='profil.php';</script>";
         exit;
     } else {
@@ -47,14 +76,46 @@ if (isset($_POST['batalkan_booking'])) {
 }
 
 /* =========================================================
-   AMBIL DATA BOOKING USER
+   INISIALISASI DAFTAR PLAT
    ========================================================= */
+// Saat pertama login, bangun daftar_plat dari semua plat
+// yang pernah dipakai dengan no_hp yang sama
+if (!isset($_SESSION['daftar_plat'])) {
+    $q_plat = mysqli_query($conn,
+        "SELECT UPPER(REPLACE(plat_mobil,' ','')) as plat
+         FROM pemesanan
+         WHERE no_telepon = '$no_hp'
+         GROUP BY UPPER(REPLACE(plat_mobil,' ',''))
+         ORDER BY MAX(id_pemesanan) DESC"
+    );
+    $daftar = [];
+    while ($rp = mysqli_fetch_assoc($q_plat)) {
+        $daftar[] = $rp['plat'];
+    }
+    // Pastikan plat login ada di awal
+    $plat_login = strtoupper(str_replace(' ', '', $_SESSION['plat_mobil']));
+    if (!in_array($plat_login, $daftar)) {
+        array_unshift($daftar, $plat_login);
+    } else {
+        // Geser plat login ke posisi pertama
+        $daftar = array_merge([$plat_login], array_diff($daftar, [$plat_login]));
+    }
+    $_SESSION['daftar_plat'] = $daftar;
+}
+
+$plat_list = $_SESSION['daftar_plat'];
+
+/* =========================================================
+   AMBIL SEMUA BOOKING DARI SEMUA PLAT USER
+   ========================================================= */
+$plat_sql_in = implode("','", array_map(fn($p) => strtoupper(str_replace(' ', '', $p)), $plat_list));
+
 $q = mysqli_query($conn,
     "SELECT p.*, pl.nama_paket, pl.harga
      FROM pemesanan p
      JOIN paket_layanan pl ON p.id_paket = pl.id_paket
      WHERE p.no_telepon = '$no_hp'
-       AND UPPER(REPLACE(p.plat_mobil,' ','')) = REPLACE('$plat',' ','')
+       AND UPPER(REPLACE(p.plat_mobil,' ','')) IN ('$plat_sql_in')
      ORDER BY p.tanggal DESC, p.jam DESC"
 );
 
@@ -63,7 +124,6 @@ $semua = [];
 
 while ($row = mysqli_fetch_assoc($q)) {
     $semua[] = $row;
-
     if (
         !$booking_aktif &&
         $row['status'] !== 'dibatalkan' &&
@@ -74,34 +134,23 @@ while ($row = mysqli_fetch_assoc($q)) {
 }
 
 /* =========================================================
-   STATUS BOOKING
+   HELPERS
    ========================================================= */
 function statusInfo($status) {
     switch ($status) {
-        case 'pending':
-            return ['label' => 'Menunggu Konfirmasi', 'color' => '#f59e0b', 'icon' => '⏳'];
-        case 'lunas':
-            return ['label' => 'Pembayaran Dikonfirmasi', 'color' => '#06b6d4', 'icon' => '💳'];
-        case 'dibatalkan':
-            return ['label' => 'Dibatalkan', 'color' => '#ef4444', 'icon' => '❌'];
-        default:
-            return ['label' => ucfirst($status), 'color' => '#6b7280', 'icon' => '•'];
+        case 'pending':    return ['label' => 'Menunggu Konfirmasi',    'color' => '#f59e0b', 'icon' => '⏳'];
+        case 'lunas':      return ['label' => 'Pembayaran Dikonfirmasi','color' => '#06b6d4', 'icon' => '💳'];
+        case 'dibatalkan': return ['label' => 'Dibatalkan',             'color' => '#ef4444', 'icon' => '❌'];
+        default:           return ['label' => ucfirst($status),         'color' => '#6b7280', 'icon' => '•'];
     }
 }
 
-/* =========================================================
-   STATUS PENGERJAAN CUCI
-   ========================================================= */
 function cuciInfo($status_cuci) {
     switch ($status_cuci) {
-        case 'belum_dicuci':
-            return ['label' => 'Belum Dicuci', 'step' => 1];
-        case 'diproses':
-            return ['label' => 'Sedang Dicuci', 'step' => 2];
-        case 'selesai':
-            return ['label' => 'Selesai', 'step' => 3];
-        default:
-            return ['label' => '-', 'step' => 0];
+        case 'belum_dicuci': return ['label' => 'Belum Dicuci',  'step' => 1];
+        case 'diproses':     return ['label' => 'Sedang Dicuci', 'step' => 2];
+        case 'selesai':      return ['label' => 'Selesai',       'step' => 3];
+        default:             return ['label' => '-',             'step' => 0];
     }
 }
 ?>
@@ -124,11 +173,7 @@ function cuciInfo($status_cuci) {
       --shadow: 0 2px 16px rgba(15,27,45,0.10);
     }
 
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
       font-family: 'Nunito', sans-serif;
@@ -137,6 +182,7 @@ function cuciInfo($status_cuci) {
       min-height: 100vh;
     }
 
+    /* ── HEADER ── */
     header {
       background: var(--navy);
       padding: 0 40px;
@@ -146,9 +192,7 @@ function cuciInfo($status_cuci) {
       justify-content: space-between;
     }
 
-    header img {
-      height: 42px;
-    }
+    header img { height: 42px; }
 
     .header-right {
       display: flex;
@@ -156,8 +200,7 @@ function cuciInfo($status_cuci) {
       gap: 16px;
     }
 
-    .btn-logout,
-    .btn-booking {
+    .btn-logout, .btn-booking {
       padding: 8px 18px;
       border-radius: 8px;
       text-decoration: none;
@@ -166,46 +209,138 @@ function cuciInfo($status_cuci) {
       transition: .2s;
     }
 
-    .btn-logout {
-      background: rgba(255,255,255,.1);
-      color: #fff;
-    }
+    .btn-logout { background: rgba(255,255,255,.1); color: #fff; }
+    .btn-logout:hover { background: rgba(255,255,255,.2); }
+    .btn-booking { background: var(--cyan); color: var(--navy); }
+    .btn-booking:hover { opacity: .85; }
 
-    .btn-logout:hover {
-      background: rgba(255,255,255,.2);
-    }
-
-    .btn-booking {
-      background: var(--cyan);
-      color: var(--navy);
-    }
-
-    .btn-booking:hover {
-      opacity: .85;
-    }
-
+    /* ── CONTAINER ── */
     .container {
       max-width: 860px;
       margin: 36px auto;
       padding: 0 20px;
     }
 
-    .greeting {
+    .greeting { margin-bottom: 28px; }
+    .greeting h1 { font-size: 26px; font-weight: 800; color: var(--navy); }
+    .greeting p { color: var(--muted); font-size: 14px; margin-top: 4px; }
+
+    /* ── PANEL PLAT NOMOR ── */
+    .plat-panel {
+      background: var(--white);
+      border-radius: var(--radius);
+      padding: 20px 24px;
       margin-bottom: 28px;
+      box-shadow: var(--shadow);
     }
 
-    .greeting h1 {
-      font-size: 26px;
+    .plat-panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .plat-panel-title {
+      font-size: 14px;
       font-weight: 800;
       color: var(--navy);
     }
 
-    .greeting p {
+    .plat-panel-sub {
+      font-size: 12px;
       color: var(--muted);
-      font-size: 14px;
-      margin-top: 4px;
+      margin-bottom: 14px;
     }
 
+    .plat-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .plat-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 6px 14px;
+      border-radius: 50px;
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: .05em;
+      border: 2px solid var(--cyan);
+      color: var(--navy);
+      background: rgba(0,200,224,.08);
+    }
+
+    .plat-chip.utama {
+      background: var(--cyan);
+      color: var(--navy);
+    }
+
+    .plat-chip-label {
+      font-size: 10px;
+      font-weight: 700;
+      background: var(--navy);
+      color: var(--cyan);
+      border-radius: 20px;
+      padding: 1px 7px;
+    }
+
+    .btn-hapus-plat {
+      background: none;
+      border: none;
+      color: #ef4444;
+      cursor: pointer;
+      font-size: 14px;
+      padding: 0;
+      line-height: 1;
+    }
+
+    .btn-hapus-plat:hover { opacity: .7; }
+
+    /* Form tambah plat */
+    .tambah-plat-wrap {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .tambah-plat-wrap input[type="text"] {
+      padding: 8px 14px;
+      border-radius: 8px;
+      border: 1.5px solid #d1d8e0;
+      font-size: 13px;
+      font-family: 'Nunito', sans-serif;
+      font-weight: 700;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+      width: 170px;
+      outline: none;
+      transition: border .2s;
+    }
+
+    .tambah-plat-wrap input[type="text"]:focus { border-color: var(--cyan); }
+
+    .btn-tambah-plat {
+      padding: 8px 16px;
+      border-radius: 8px;
+      background: var(--navy);
+      color: #fff;
+      font-size: 13px;
+      font-weight: 800;
+      border: none;
+      cursor: pointer;
+      transition: .2s;
+    }
+
+    .btn-tambah-plat:hover { background: #1a2f4a; }
+
+    /* ── STATUS CARD ── */
     .status-card {
       background: var(--navy);
       border-radius: var(--radius);
@@ -239,22 +374,9 @@ function cuciInfo($status_cuci) {
       margin: 14px 0 18px;
     }
 
-    .sc-meta {
-      display: flex;
-      gap: 24px;
-      flex-wrap: wrap;
-    }
-
-    .sc-meta-item .key {
-      font-size: 11px;
-      color: rgba(255,255,255,.45);
-    }
-
-    .sc-meta-item .val {
-      font-size: 15px;
-      font-weight: 700;
-      margin-top: 2px;
-    }
+    .sc-meta { display: flex; gap: 24px; flex-wrap: wrap; }
+    .sc-meta-item .key { font-size: 11px; color: rgba(255,255,255,.45); }
+    .sc-meta-item .val { font-size: 15px; font-weight: 700; margin-top: 2px; }
 
     .progress-wrap {
       margin-top: 24px;
@@ -271,118 +393,59 @@ function cuciInfo($status_cuci) {
       letter-spacing: .8px;
     }
 
-    .progress-steps {
-      display: flex;
-      justify-content: space-between;
-      gap: 12px;
-    }
+    .progress-steps { display: flex; justify-content: space-between; gap: 12px; }
 
-    .step {
-      flex: 1;
-      text-align: center;
-      position: relative;
-    }
+    .step { flex: 1; text-align: center; position: relative; }
 
     .step::after {
       content: '';
       position: absolute;
-      top: 14px;
-      right: -50%;
-      width: 100%;
-      height: 3px;
+      top: 14px; right: -50%;
+      width: 100%; height: 3px;
       background: rgba(255,255,255,.12);
       z-index: 0;
     }
 
-    .step:last-child::after {
-      display: none;
-    }
+    .step:last-child::after { display: none; }
 
     .step-circle {
-      width: 28px;
-      height: 28px;
+      width: 28px; height: 28px;
       border-radius: 50%;
       margin: 0 auto 8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 12px;
-      font-weight: 800;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 800;
       background: rgba(255,255,255,.12);
       color: #fff;
-      position: relative;
-      z-index: 1;
+      position: relative; z-index: 1;
     }
 
-    .step.active .step-circle {
-      background: var(--cyan);
-      color: var(--navy);
-    }
+    .step.active .step-circle { background: var(--cyan); color: var(--navy); }
+    .step-label { font-size: 11px; color: rgba(255,255,255,.75); }
 
-    .step-label {
-      font-size: 11px;
-      color: rgba(255,255,255,.75);
-    }
-
-    .action-wrap {
-      margin-top: 18px;
-    }
+    .action-wrap { margin-top: 18px; }
 
     .btn-cancel {
-      border: none;
-      background: #ef4444;
-      color: #fff;
-      padding: 7px 14px;
-      border-radius: 8px;
-      font-size: 12px;
-      font-weight: 700;
-      cursor: pointer;
-      margin-top: 6px;
+      border: none; background: #ef4444; color: #fff;
+      padding: 7px 14px; border-radius: 8px;
+      font-size: 12px; font-weight: 700;
+      cursor: pointer; margin-top: 6px;
     }
+    .btn-cancel:hover { opacity: .9; }
 
-    .btn-cancel:hover {
-      opacity: .9;
-    }
-
+    /* ── NO BOOKING ── */
     .no-booking {
-      background: var(--white);
-      border-radius: var(--radius);
-      padding: 40px;
-      text-align: center;
-      margin-bottom: 28px;
-      box-shadow: var(--shadow);
+      background: var(--white); border-radius: var(--radius);
+      padding: 40px; text-align: center;
+      margin-bottom: 28px; box-shadow: var(--shadow);
     }
+    .no-booking .nb-icon { font-size: 48px; margin-bottom: 12px; }
+    .no-booking h3 { font-size: 18px; font-weight: 800; color: var(--navy); margin-bottom: 6px; }
+    .no-booking p { color: var(--muted); font-size: 14px; margin-bottom: 20px; }
 
-    .no-booking .nb-icon {
-      font-size: 48px;
-      margin-bottom: 12px;
-    }
+    /* ── HISTORY ── */
+    .section-title { font-size: 16px; font-weight: 800; color: var(--navy); margin-bottom: 14px; }
 
-    .no-booking h3 {
-      font-size: 18px;
-      font-weight: 800;
-      color: var(--navy);
-      margin-bottom: 6px;
-    }
-
-    .no-booking p {
-      color: var(--muted);
-      font-size: 14px;
-      margin-bottom: 20px;
-    }
-
-    .section-title {
-      font-size: 16px;
-      font-weight: 800;
-      color: var(--navy);
-      margin-bottom: 14px;
-    }
-
-    .history-list {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
+    .history-list { display: flex; flex-direction: column; gap: 12px; }
 
     .history-item {
       background: var(--white);
@@ -395,75 +458,78 @@ function cuciInfo($status_cuci) {
       box-shadow: var(--shadow);
     }
 
-    .hi-left .hi-paket {
-      font-size: 15px;
-      font-weight: 800;
+    .hi-left .hi-paket { font-size: 15px; font-weight: 800; color: var(--navy); }
+    .hi-left .hi-meta { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+    .hi-plat-badge {
+      display: inline-block;
+      background: rgba(0,200,224,.12);
+      border: 1px solid var(--cyan);
       color: var(--navy);
-    }
-
-    .hi-left .hi-meta {
-      font-size: 12px;
-      color: var(--muted);
-      margin-top: 4px;
-    }
-
-    .hi-right {
-      text-align: right;
-    }
-
-    .hi-harga {
-      font-size: 14px;
+      font-size: 11px;
       font-weight: 800;
-      color: var(--navy);
+      padding: 2px 9px;
+      border-radius: 20px;
+      margin-top: 5px;
+      letter-spacing: .04em;
     }
 
+    .hi-right { text-align: right; }
+    .hi-harga { font-size: 14px; font-weight: 800; color: var(--navy); }
     .hi-badge {
       display: inline-block;
       padding: 4px 10px;
       border-radius: 50px;
-      font-size: 11px;
-      font-weight: 700;
+      font-size: 11px; font-weight: 700;
       margin-top: 5px;
     }
 
     .empty-history {
+      color: var(--muted); font-size: 14px; text-align: center;
+      padding: 24px; background: var(--white); border-radius: var(--radius);
+    }
+
+    /* ── FILTER PLAT ── */
+    .filter-plat-wrap {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 16px;
+      align-items: center;
+    }
+
+    .filter-plat-wrap span {
+      font-size: 13px;
       color: var(--muted);
-      font-size: 14px;
-      text-align: center;
-      padding: 24px;
-      background: var(--white);
-      border-radius: var(--radius);
+      font-weight: 700;
+    }
+
+    .filter-btn {
+      padding: 5px 14px;
+      border-radius: 50px;
+      font-size: 12px;
+      font-weight: 800;
+      border: 1.5px solid #d1d8e0;
+      background: transparent;
+      cursor: pointer;
+      transition: .15s;
+      letter-spacing: .04em;
+    }
+
+    .filter-btn:hover, .filter-btn.aktif {
+      border-color: var(--cyan);
+      background: rgba(0,200,224,.12);
+      color: var(--navy);
     }
 
     @media (max-width: 600px) {
-      header {
-        padding: 0 20px;
-      }
-
-      .container {
-        margin: 20px auto;
-      }
-
-      .status-card {
-        padding: 20px;
-      }
-
-      .history-item {
-        flex-direction: column;
-        align-items: flex-start;
-      }
-
-      .hi-right {
-        text-align: left;
-      }
-
-      .progress-steps {
-        flex-direction: column;
-      }
-
-      .step::after {
-        display: none;
-      }
+      header { padding: 0 20px; }
+      .container { margin: 20px auto; }
+      .status-card { padding: 20px; }
+      .history-item { flex-direction: column; align-items: flex-start; }
+      .hi-right { text-align: left; }
+      .progress-steps { flex-direction: column; }
+      .step::after { display: none; }
     }
   </style>
 </head>
@@ -479,12 +545,51 @@ function cuciInfo($status_cuci) {
 
 <div class="container">
 
+  <!-- GREETING -->
   <div class="greeting">
     <h1>Halo, <?= htmlspecialchars($_SESSION['nama_pelanggan']) ?> 👋</h1>
-    <p>No. Telepon: <?= htmlspecialchars($no_hp) ?> &nbsp;·&nbsp; Plat: <?= htmlspecialchars(strtoupper($plat)) ?></p>
+    <p>No. Telepon: <?= htmlspecialchars($no_hp) ?> &nbsp;·&nbsp;
+       <?= count($plat_list) ?> plat terdaftar
+    </p>
   </div>
 
-  <?php if ($booking_aktif): 
+  <!-- PANEL PLAT NOMOR -->
+  <div class="plat-panel">
+    <div class="plat-panel-header">
+      <div class="plat-panel-title">🚗 Kendaraan Terdaftar</div>
+    </div>
+    <div class="plat-panel-sub">
+      Semua plat nomor di bawah ini berada dalam satu profil. Booking baru dari profil ini bisa menggunakan plat mana saja.
+    </div>
+
+    <!-- Chip plat -->
+    <div class="plat-chips">
+      <?php foreach ($plat_list as $idx => $plat_item): ?>
+        <div class="plat-chip <?= $idx === 0 ? 'utama' : '' ?>">
+          <?= htmlspecialchars(strtoupper($plat_item)) ?>
+          <?php if ($idx === 0): ?>
+            <span class="plat-chip-label">Utama</span>
+          <?php else: ?>
+            <form method="POST" style="display:inline;"
+                  onsubmit="return confirm('Hapus plat <?= htmlspecialchars($plat_item) ?> dari profil ini?')">
+              <input type="hidden" name="plat_hapus" value="<?= htmlspecialchars($plat_item) ?>">
+              <button type="submit" name="hapus_plat" class="btn-hapus-plat" title="Hapus plat ini">✕</button>
+            </form>
+          <?php endif; ?>
+        </div>
+      <?php endforeach; ?>
+    </div>
+
+    <!-- Form tambah plat -->
+    <form method="POST" class="tambah-plat-wrap">
+      <input type="text" name="plat_baru" placeholder="Contoh: B 1234 XY"
+             style="text-transform:uppercase" maxlength="12" required>
+      <button type="submit" name="tambah_plat" class="btn-tambah-plat">+ Tambah Plat</button>
+    </form>
+  </div>
+
+  <!-- BOOKING AKTIF -->
+  <?php if ($booking_aktif):
     $si = statusInfo($booking_aktif['status']);
     $ci = cuciInfo($booking_aktif['status_cuci']);
   ?>
@@ -522,12 +627,10 @@ function cuciInfo($status_cuci) {
             <div class="step-circle">1</div>
             <div class="step-label">Belum Dicuci</div>
           </div>
-
           <div class="step <?= $ci['step'] >= 2 ? 'active' : '' ?>">
             <div class="step-circle">2</div>
             <div class="step-label">Diproses</div>
           </div>
-
           <div class="step <?= $ci['step'] >= 3 ? 'active' : '' ?>">
             <div class="step-circle">3</div>
             <div class="step-label">Selesai</div>
@@ -557,28 +660,44 @@ function cuciInfo($status_cuci) {
     </div>
   <?php endif; ?>
 
+  <!-- RIWAYAT BOOKING (semua plat) -->
   <div class="section-title">Riwayat Booking</div>
-  <div class="history-list">
+
+  <!-- Filter per plat -->
+  <?php if (count($plat_list) > 1): ?>
+    <div class="filter-plat-wrap">
+      <span>Filter:</span>
+      <button class="filter-btn aktif" onclick="filterPlat('semua', this)">Semua</button>
+      <?php foreach ($plat_list as $plat_item): ?>
+        <button class="filter-btn" onclick="filterPlat('<?= htmlspecialchars(strtoupper($plat_item)) ?>', this)">
+          <?= htmlspecialchars(strtoupper($plat_item)) ?>
+        </button>
+      <?php endforeach; ?>
+    </div>
+  <?php endif; ?>
+
+  <div class="history-list" id="historyList">
     <?php if (empty($semua)): ?>
       <div class="empty-history">Belum ada riwayat booking.</div>
     <?php else: ?>
-      <?php foreach ($semua as $item): 
+      <?php foreach ($semua as $item):
         $si = statusInfo($item['status']);
+        $plat_item_upper = strtoupper(str_replace(' ', '', $item['plat_mobil']));
       ?>
-        <div class="history-item">
+        <div class="history-item" data-plat="<?= htmlspecialchars($plat_item_upper) ?>">
           <div class="hi-left">
             <div class="hi-paket"><?= htmlspecialchars($item['nama_paket']) ?></div>
             <div class="hi-meta">
               <?= date('d M Y', strtotime($item['tanggal'])) ?> &nbsp;·&nbsp;
-              <?= htmlspecialchars($item['jam']) ?> &nbsp;·&nbsp;
-              <?= htmlspecialchars(strtoupper($item['plat_mobil'])) ?>
+              <?= htmlspecialchars($item['jam']) ?>
             </div>
+            <span class="hi-plat-badge"><?= htmlspecialchars(strtoupper($item['plat_mobil'])) ?></span>
 
             <?php if (
               $item['status'] === 'pending' ||
               ($item['status'] === 'lunas' && $item['status_cuci'] === 'belum_dicuci')
             ): ?>
-              <form method="POST" onsubmit="return confirm('Yakin ingin membatalkan booking ini?')">
+              <form method="POST" onsubmit="return confirm('Yakin ingin membatalkan booking ini?')" style="margin-top:6px;">
                 <input type="hidden" name="id_pemesanan" value="<?= $item['id_pemesanan'] ?>">
                 <button type="submit" name="batalkan_booking" class="btn-cancel">Batalkan</button>
               </form>
@@ -597,6 +716,23 @@ function cuciInfo($status_cuci) {
   </div>
 
 </div>
+
+<script>
+function filterPlat(plat, btn) {
+  // Update tombol aktif
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('aktif'));
+  btn.classList.add('aktif');
+
+  // Filter kartu
+  document.querySelectorAll('#historyList .history-item').forEach(item => {
+    if (plat === 'semua' || item.dataset.plat === plat.replace(/\s/g,'')) {
+      item.style.display = 'flex';
+    } else {
+      item.style.display = 'none';
+    }
+  });
+}
+</script>
 
 </body>
 </html>
