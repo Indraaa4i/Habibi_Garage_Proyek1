@@ -81,8 +81,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   </a>
   <ul class="nav-links">
     <li><a href="#">Home</a></li>
-    <li><a href="z">Service</a></li>
-    <li><a href="#">Contact Us</a></li>
+    <li><a href="menu.php">Service</a></li>
+    <li><a href="#contact">Contact Us</a></li>
     <li><a href="#">About Us</a></li>
   </ul>
 </nav>
@@ -330,7 +330,7 @@ document.addEventListener('keydown', e => { if(e.key === 'Escape') tutupModal();
 
 
 <!-- FOOTER -->
-<footer class="footer">
+<footer class="footer" id="contact">
   <div class="footer-container">
     <div class="footer-col">
       <h3>Habibi Garage</h3>
