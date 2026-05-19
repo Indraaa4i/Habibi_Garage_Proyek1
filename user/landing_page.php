@@ -168,7 +168,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       <div class="card-icon">🕒</div>
       <h3 class="card-heading">Proses Cepat &amp; Aman</h3>
       <p class="card-desc">Dikerjakan oleh tenaga profesional dengan peralatan dan produk yang aman untuk kendaraan.</p>
-      <button class="card-btn">Cek Layanan</button>
+      <button class="card-btn" onclick="window.location.href='layanan.php'">Cek Layanan</button>
     </div>
 
     <hr class="divider-grid">

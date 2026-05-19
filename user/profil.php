@@ -47,10 +47,11 @@ if (isset($_POST['hapus_plat'])) {
 /* =========================================================
    HANDLE BATAL BOOKING
    ========================================================= */
+
+// --- Batalkan langsung (status pending, belum bayar) ---
 if (isset($_POST['batalkan_booking'])) {
     $id_batal = (int) $_POST['id_pemesanan'];
 
-    // Ambil semua plat milik user
     $plat_list = $_SESSION['daftar_plat'] ?? [$_SESSION['plat_mobil']];
     $plat_sql  = implode("','", array_map(fn($p) => strtoupper(str_replace(' ', '', $p)), $plat_list));
 
@@ -59,15 +60,54 @@ if (isset($_POST['batalkan_booking'])) {
         WHERE id_pemesanan = '$id_batal'
         AND no_telepon = '$no_hp'
         AND UPPER(REPLACE(plat_mobil,' ','')) IN ('$plat_sql')
-        AND (
-            status = 'pending'
-            OR (status = 'lunas' AND status_cuci = 'belum_dicuci')
-        )
+        AND status = 'pending'
     ");
 
     if (mysqli_num_rows($cek) > 0) {
         mysqli_query($conn, "UPDATE pemesanan SET status = 'dibatalkan' WHERE id_pemesanan = '$id_batal'");
         echo "<script>alert('Booking berhasil dibatalkan.'); window.location='profil.php';</script>";
+        exit;
+    } else {
+        echo "<script>alert('Booking tidak dapat dibatalkan.'); window.location='profil.php';</script>";
+        exit;
+    }
+}
+
+// --- Batalkan + Refund (status lunas, belum dicuci) ---
+if (isset($_POST['ajukan_refund'])) {
+    $id_batal    = (int) $_POST['id_pemesanan'];
+    $nama_rek    = mysqli_real_escape_string($conn, trim($_POST['refund_nama_rek']    ?? ''));
+    $nomor_rek   = mysqli_real_escape_string($conn, trim($_POST['refund_nomor_rek']   ?? ''));
+    $bank        = mysqli_real_escape_string($conn, trim($_POST['refund_bank']        ?? ''));
+
+    if (!$nama_rek || !$nomor_rek || !$bank) {
+        echo "<script>alert('Lengkapi data rekening untuk refund!'); window.history.back();</script>";
+        exit;
+    }
+
+    $plat_list = $_SESSION['daftar_plat'] ?? [$_SESSION['plat_mobil']];
+    $plat_sql  = implode("','", array_map(fn($p) => strtoupper(str_replace(' ', '', $p)), $plat_list));
+
+    $cek = mysqli_query($conn, "
+        SELECT * FROM pemesanan
+        WHERE id_pemesanan = '$id_batal'
+        AND no_telepon = '$no_hp'
+        AND UPPER(REPLACE(plat_mobil,' ','')) IN ('$plat_sql')
+        AND status = 'lunas'
+        AND status_cuci = 'belum_dicuci'
+    ");
+
+    if (mysqli_num_rows($cek) > 0) {
+        mysqli_query($conn, "
+            UPDATE pemesanan
+            SET status           = 'dibatalkan',
+                refund_nama_rek  = '$nama_rek',
+                refund_nomor_rek = '$nomor_rek',
+                refund_bank      = '$bank',
+                refund_status    = 'menunggu'
+            WHERE id_pemesanan = '$id_batal'
+        ");
+        echo "<script>alert('Booking dibatalkan. Permintaan refund telah dikirim ke admin.'); window.location='profil.php';</script>";
         exit;
     } else {
         echo "<script>alert('Booking tidak dapat dibatalkan.'); window.location='profil.php';</script>";
@@ -141,6 +181,7 @@ function statusInfo($status) {
         case 'pending':    return ['label' => 'Menunggu Konfirmasi',    'color' => '#f59e0b', 'icon' => '⏳'];
         case 'lunas':      return ['label' => 'Pembayaran Dikonfirmasi','color' => '#06b6d4', 'icon' => '💳'];
         case 'dibatalkan': return ['label' => 'Dibatalkan',             'color' => '#ef4444', 'icon' => '❌'];
+        case 'ditolak':    return ['label' => 'Ditolak Admin',          'color' => '#dc2626', 'icon' => '🚫'];
         default:           return ['label' => ucfirst($status),         'color' => '#6b7280', 'icon' => '•'];
     }
 }
@@ -644,10 +685,16 @@ function cuciInfo($status_cuci) {
         ($booking_aktif['status'] === 'lunas' && $booking_aktif['status_cuci'] === 'belum_dicuci')
       ): ?>
         <div class="action-wrap">
-          <form method="POST" onsubmit="return confirm('Yakin ingin membatalkan booking ini?')">
-            <input type="hidden" name="id_pemesanan" value="<?= $booking_aktif['id_pemesanan'] ?>">
-            <button type="submit" name="batalkan_booking" class="btn-cancel">Batalkan Booking</button>
-          </form>
+          <?php if ($booking_aktif['status'] === 'pending'): ?>
+            <form method="POST" onsubmit="return confirm('Yakin ingin membatalkan booking ini? Tindakan ini tidak bisa dibatalkan.')">
+              <input type="hidden" name="id_pemesanan" value="<?= $booking_aktif['id_pemesanan'] ?>">
+              <button type="submit" name="batalkan_booking" class="btn-cancel">Batalkan Booking</button>
+            </form>
+          <?php else: ?>
+            <button class="btn-cancel" onclick="bukaModalRefund(<?= $booking_aktif['id_pemesanan'] ?>, '<?= number_format($booking_aktif['harga'],0,',','.') ?>')">
+              Batalkan &amp; Ajukan Refund
+            </button>
+          <?php endif; ?>
         </div>
       <?php endif; ?>
     </div>
@@ -698,10 +745,17 @@ function cuciInfo($status_cuci) {
               $item['status'] === 'pending' ||
               ($item['status'] === 'lunas' && $item['status_cuci'] === 'belum_dicuci')
             ): ?>
-              <form method="POST" onsubmit="return confirm('Yakin ingin membatalkan booking ini?')" style="margin-top:6px;">
-                <input type="hidden" name="id_pemesanan" value="<?= $item['id_pemesanan'] ?>">
-                <button type="submit" name="batalkan_booking" class="btn-cancel">Batalkan</button>
-              </form>
+              <?php if ($item['status'] === 'pending'): ?>
+                <form method="POST" onsubmit="return confirm('Yakin ingin membatalkan booking ini?')" style="margin-top:6px;">
+                  <input type="hidden" name="id_pemesanan" value="<?= $item['id_pemesanan'] ?>">
+                  <button type="submit" name="batalkan_booking" class="btn-cancel">Batalkan</button>
+                </form>
+              <?php else: ?>
+                <button class="btn-cancel" style="margin-top:6px;"
+                  onclick="bukaModalRefund(<?= $item['id_pemesanan'] ?>, '<?= number_format($item['harga'],0,',','.') ?>')">
+                  Batalkan &amp; Refund
+                </button>
+              <?php endif; ?>
             <?php endif; ?>
           </div>
 
@@ -733,6 +787,140 @@ function filterPlat(plat, btn) {
     }
   });
 }
+</script>
+
+
+<!-- ============================================================
+     MODAL FORM REFUND
+     ============================================================ -->
+<div id="overlayRefund" onclick="tutupModalRefund()"
+  style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:998;backdrop-filter:blur(3px);"></div>
+
+<div id="modalRefund"
+  style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+         z-index:999;width:90%;max-width:440px;background:#fff;border-radius:20px;
+         box-shadow:0 24px 64px rgba(0,0,0,0.22);overflow:hidden;">
+
+  <!-- Header -->
+  <div style="background:#0f1b2d;padding:22px 24px 18px;position:relative;">
+    <div style="font-size:22px;margin-bottom:6px;">💸</div>
+    <h3 style="color:#fff;font-size:16px;font-weight:800;margin:0;">Ajukan Pengembalian Dana</h3>
+    <p style="color:rgba(255,255,255,.55);font-size:12px;margin-top:4px;">
+      Total refund: <strong id="refundNominal" style="color:#e8a020;"></strong>
+    </p>
+    <button onclick="tutupModalRefund()"
+      style="position:absolute;top:16px;right:16px;background:rgba(255,255,255,.1);
+             border:none;color:#fff;width:28px;height:28px;border-radius:50%;
+             font-size:16px;cursor:pointer;line-height:1;">✕</button>
+  </div>
+
+  <!-- Info -->
+  <div style="background:#fef3c7;border-left:4px solid #f59e0b;padding:12px 16px;font-size:12px;color:#92400e;line-height:1.5;">
+    ⚠️ Setelah pembatalan, admin akan memproses transfer refund ke rekening yang Anda isi di bawah ini.
+  </div>
+
+  <!-- Form -->
+  <form method="POST" style="padding:20px 24px 24px;" onsubmit="return validasiRefund()">
+    <input type="hidden" name="id_pemesanan" id="refundIdPemesanan">
+
+    <div style="margin-bottom:14px;">
+      <label style="display:block;font-size:12px;font-weight:800;color:#374151;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px;">
+        Nama Pemilik Rekening
+      </label>
+      <input type="text" name="refund_nama_rek" id="refundNamaRek" placeholder="Contoh: Budi Santoso"
+        style="width:100%;padding:10px 14px;border:1.5px solid #e5e7eb;border-radius:10px;
+               font-size:14px;outline:none;transition:.15s;font-family:inherit;"
+        onfocus="this.style.borderColor='#0f1b2d'"
+        onblur="this.style.borderColor='#e5e7eb'">
+    </div>
+
+    <div style="margin-bottom:14px;">
+      <label style="display:block;font-size:12px;font-weight:800;color:#374151;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px;">
+        Nama Bank / E-Wallet
+      </label>
+      <select name="refund_bank" id="refundBank"
+        style="width:100%;padding:10px 14px;border:1.5px solid #e5e7eb;border-radius:10px;
+               font-size:14px;outline:none;background:#fff;font-family:inherit;cursor:pointer;
+               transition:.15s;"
+        onfocus="this.style.borderColor='#0f1b2d'"
+        onblur="this.style.borderColor='#e5e7eb'">
+        <option value="">-- Pilih Bank / E-Wallet --</option>
+        <optgroup label="Bank">
+          <option>BCA</option>
+          <option>BNI</option>
+          <option>BRI</option>
+          <option>Mandiri</option>
+          <option>CIMB Niaga</option>
+          <option>BSI</option>
+          <option>Bank Lainnya</option>
+        </optgroup>
+        <optgroup label="E-Wallet">
+          <option>GoPay</option>
+          <option>OVO</option>
+          <option>Dana</option>
+          <option>ShopeePay</option>
+        </optgroup>
+      </select>
+    </div>
+
+    <div style="margin-bottom:20px;">
+      <label style="display:block;font-size:12px;font-weight:800;color:#374151;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px;">
+        Nomor Rekening / E-Wallet
+      </label>
+      <input type="text" name="refund_nomor_rek" id="refundNomorRek" placeholder="Contoh: 1234567890"
+        inputmode="numeric"
+        style="width:100%;padding:10px 14px;border:1.5px solid #e5e7eb;border-radius:10px;
+               font-size:14px;outline:none;transition:.15s;font-family:inherit;"
+        onfocus="this.style.borderColor='#0f1b2d'"
+        onblur="this.style.borderColor='#e5e7eb'">
+    </div>
+
+    <button type="submit" name="ajukan_refund"
+      style="width:100%;padding:13px;border:none;border-radius:12px;
+             background:#ef4444;color:#fff;font-size:14px;font-weight:800;
+             cursor:pointer;letter-spacing:.5px;transition:.18s;"
+      onmouseover="this.style.background='#dc2626'"
+      onmouseout="this.style.background='#ef4444'">
+      Batalkan Booking &amp; Ajukan Refund
+    </button>
+    <button type="button" onclick="tutupModalRefund()"
+      style="width:100%;padding:10px;border:1.5px solid #e5e7eb;border-radius:12px;
+             background:#fff;color:#6b7280;font-size:13px;font-weight:700;
+             cursor:pointer;margin-top:8px;transition:.18s;"
+      onmouseover="this.style.borderColor='#374151';this.style.color='#374151'"
+      onmouseout="this.style.borderColor='#e5e7eb';this.style.color='#6b7280'">
+      Batal
+    </button>
+  </form>
+</div>
+
+<script>
+function bukaModalRefund(idPemesanan, nominal) {
+  document.getElementById('refundIdPemesanan').value = idPemesanan;
+  document.getElementById('refundNominal').textContent = 'Rp ' + nominal;
+  document.getElementById('refundNamaRek').value = '';
+  document.getElementById('refundNomorRek').value = '';
+  document.getElementById('refundBank').value = '';
+  document.getElementById('overlayRefund').style.display = 'block';
+  document.getElementById('modalRefund').style.display = 'block';
+  document.body.style.overflow = 'hidden';
+}
+function tutupModalRefund() {
+  document.getElementById('overlayRefund').style.display = 'none';
+  document.getElementById('modalRefund').style.display = 'none';
+  document.body.style.overflow = '';
+}
+function validasiRefund() {
+  const nama  = document.getElementById('refundNamaRek').value.trim();
+  const bank  = document.getElementById('refundBank').value;
+  const nomor = document.getElementById('refundNomorRek').value.trim();
+  if (!nama || !bank || !nomor) {
+    alert('Lengkapi semua data rekening terlebih dahulu.');
+    return false;
+  }
+  return confirm('Yakin ingin membatalkan booking dan mengajukan refund ke ' + bank + ' ' + nomor + ' a/n ' + nama + '?');
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') tutupModalRefund(); });
 </script>
 
 </body>

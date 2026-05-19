@@ -110,6 +110,16 @@ if(isset($_POST['aksi_konfirmasi'])){
 }
 
 /* =========================================================
+   TANDAI REFUND SELESAI
+========================================================= */
+if(isset($_POST['selesai_refund'])){
+    $id = (int)$_POST['id_pemesanan'];
+    @mysqli_query($conn,"UPDATE pemesanan SET refund_status='selesai' WHERE id_pemesanan='$id'");
+    header("Location: dashboard_admin.php?page=konfirmasi");
+    exit;
+}
+
+/* =========================================================
    STATISTIK
 ========================================================= */
 
@@ -1740,6 +1750,18 @@ $q_konfirmasi = mysqli_query($conn,"
     WHERE p.status='pending' AND p.bukti_bayar IS NOT NULL AND p.bukti_bayar != ''
     ORDER BY p.created_at ASC
 ");
+
+// Query refund yang menunggu diproses
+$q_refund = mysqli_query($conn,"
+    SELECT p.*, pl.nama_paket, pl.harga
+    FROM pemesanan p
+    JOIN paket_layanan pl ON p.id_paket = pl.id_paket
+    WHERE p.status='dibatalkan'
+    AND p.refund_status='menunggu'
+    AND p.refund_nomor_rek IS NOT NULL
+    ORDER BY p.created_at ASC
+");
+$total_refund = mysqli_num_rows($q_refund);
 ?>
 
 <div style="margin-bottom:24px;">
@@ -1832,6 +1854,75 @@ $q_konfirmasi = mysqli_query($conn,"
 </div>
 <?php endwhile; ?>
 </div>
+
+<!-- ============================================================
+     SECTION: PENGEMBALIAN DANA MENUNGGU
+     ============================================================ -->
+<?php if($total_refund > 0): ?>
+<div style="margin-top:40px;">
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+    <h2 style="font-size:20px;font-weight:700;color:#0f1b2d;">💸 Pengembalian Dana</h2>
+    <span style="background:#ef4444;color:white;font-size:12px;font-weight:800;padding:3px 12px;border-radius:20px;">
+      <?= $total_refund ?> menunggu
+    </span>
+  </div>
+  <p style="color:#777;font-size:14px;margin-bottom:20px;">Transfer dana ke rekening pelanggan di bawah, lalu tandai sebagai selesai.</p>
+
+  <div style="display:grid;gap:16px;">
+  <?php
+  // Reset pointer
+  mysqli_data_seek($q_refund, 0);
+  while($rr = mysqli_fetch_assoc($q_refund)):
+  ?>
+  <div style="background:white;border-radius:18px;padding:24px 28px;box-shadow:0 6px 20px rgba(0,0,0,0.07);
+              display:grid;grid-template-columns:1fr auto;gap:24px;align-items:center;
+              border-left:5px solid #ef4444;">
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px;">
+
+      <div>
+        <p style="font-size:11px;color:#9ca3af;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Pelanggan</p>
+        <p style="font-weight:800;font-size:15px;color:#0f1b2d;"><?= htmlspecialchars($rr['nama_pelanggan']) ?></p>
+        <p style="font-size:12px;color:#6b7280;"><?= htmlspecialchars($rr['no_telepon']) ?></p>
+      </div>
+
+      <div>
+        <p style="font-size:11px;color:#9ca3af;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Paket Dibatalkan</p>
+        <p style="font-weight:700;color:#119cc2;font-size:14px;"><?= htmlspecialchars($rr['nama_paket']) ?></p>
+        <p style="font-size:12px;color:#6b7280;"><?= date('d M Y', strtotime($rr['tanggal'])) ?> · <?= $rr['jam'] ?></p>
+      </div>
+
+      <div>
+        <p style="font-size:11px;color:#9ca3af;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Nominal Refund</p>
+        <p style="font-weight:800;font-size:20px;color:#16a34a;">Rp <?= number_format($rr['harga'],0,',','.') ?></p>
+      </div>
+
+      <div style="background:#fff7ed;border-radius:12px;padding:14px 16px;border:1px solid #fed7aa;">
+        <p style="font-size:11px;color:#92400e;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">Transfer ke</p>
+        <p style="font-weight:800;font-size:15px;color:#0f1b2d;"><?= htmlspecialchars($rr['refund_bank'] ?? '-') ?></p>
+        <p style="font-size:16px;font-weight:800;color:#0f1b2d;letter-spacing:1px;margin:4px 0;"><?= htmlspecialchars($rr['refund_nomor_rek'] ?? '-') ?></p>
+        <p style="font-size:12px;color:#6b7280;">a/n <?= htmlspecialchars($rr['refund_nama_rek'] ?? '-') ?></p>
+      </div>
+
+    </div>
+
+    <form method="POST" onsubmit="return confirm('Tandai refund ini sudah ditransfer?')">
+      <input type="hidden" name="id_pemesanan" value="<?= $rr['id_pemesanan'] ?>">
+      <button type="submit" name="selesai_refund"
+        style="background:#16a34a;color:white;border:none;border-radius:14px;
+               padding:14px 20px;font-size:13px;font-weight:800;cursor:pointer;
+               white-space:nowrap;transition:.2s;"
+        onmouseover="this.style.background='#15803d'"
+        onmouseout="this.style.background='#16a34a'">
+        ✅ Tandai Selesai
+      </button>
+    </form>
+
+  </div>
+  <?php endwhile; ?>
+  </div>
+</div>
+<?php endif; ?>
 
 <?php endif; ?>
 
