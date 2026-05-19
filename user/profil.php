@@ -271,7 +271,7 @@ function cuciInfo($status_cuci) {
       font-size: 13px;
       font-weight: 800;
       letter-spacing: .05em;
-      border: 2px solid var(--cyan);
+      border: 6px solid var(--cyan);
       color: var(--navy);
       background: rgba(0,200,224,.08);
     }
@@ -547,7 +547,8 @@ function cuciInfo($status_cuci) {
 
   <!-- GREETING -->
   <div class="greeting">
-    <h1>Halo, <?= htmlspecialchars($_SESSION['nama_pelanggan']) ?> 👋</h1>
+    <h1>Halo, <?= htmlspecialchars($_SESSION['nama_pelanggan']) ?> 👋</h1> 
+    <h3>Jangan Lupa datang tepat waktu ya🤗</h3>
     <p>No. Telepon: <?= htmlspecialchars($no_hp) ?> &nbsp;·&nbsp;
        <?= count($plat_list) ?> plat terdaftar
     </p>
