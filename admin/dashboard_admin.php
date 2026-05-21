@@ -34,12 +34,10 @@ if(isset($_GET['ajax_booking'])){
 }
 
 /* =========================================================
-   UPDATE STATUS CUCI — ONE-CLICK (belum_dicuci→diproses→selesai)
+   UPDATE STATUS CUCI — ONE-CLICK
 ========================================================= */
 if(isset($_POST['next_status'])){
     $id = (int)$_POST['id_pemesanan'];
-
-    // Ambil data pemesanan lengkap
     $q  = mysqli_query($conn,"
         SELECT p.*, pl.nama_paket
         FROM pemesanan p
@@ -48,49 +46,27 @@ if(isset($_POST['next_status'])){
     ");
     $data_pesan = mysqli_fetch_assoc($q);
     $cur = $data_pesan['status_cuci'] ?? 'belum_dicuci';
-
     $next = $cur === 'belum_dicuci' ? 'diproses'
           : ($cur === 'diproses'    ? 'selesai'
           :                          'selesai');
-
     mysqli_query($conn,"UPDATE pemesanan SET status_cuci='$next' WHERE id_pemesanan='$id'");
-
-    // Jika baru saja jadi selesai, kirim WA
     if($next === 'selesai'){
-        $nama   = urlencode($data_pesan['nama_pelanggan']);
-        $paket  = urlencode($data_pesan['nama_paket']);
-        $plat   = urlencode($data_pesan['plat_mobil']);
         $no_hp  = preg_replace('/[^0-9]/', '', $data_pesan['no_telepon']);
-        // Ubah awalan 0 jadi 62
         if(substr($no_hp, 0, 1) === '0') $no_hp = '62' . substr($no_hp, 1);
-
         $pesan = urlencode(
-            "Halo, {$data_pesan['nama_pelanggan']}! 👋
-
-" .
-            "Mobil Anda dengan plat *{$data_pesan['plat_mobil']}* sudah selesai dicuci. ✅
-" .
-            "Paket: *{$data_pesan['nama_paket']}*
-
-" .
-            "Silakan datang untuk mengambil kendaraan Anda.
-
-" .
+            "Halo, {$data_pesan['nama_pelanggan']}! 👋\r\n\r\n" .
+            "Mobil Anda dengan plat *{$data_pesan['plat_mobil']}* sudah selesai dicuci. ✅\r\n" .
+            "Paket: *{$data_pesan['nama_paket']}*\r\n\r\n" .
+            "Silakan datang untuk mengambil kendaraan Anda.\r\n\r\n" .
             "Terima kasih telah mempercayai *Habibi Garage*! 🚗✨"
         );
-
         $wa_url = "https://wa.me/{$no_hp}?text={$pesan}";
-
-        // Redirect ke halaman perantara yang buka WA lalu balik ke dashboard
         header("Location: dashboard_admin.php?wa_url=" . urlencode($wa_url));
         exit;
     }
-
     header("Location: dashboard_admin.php");
     exit;
 }
-
-
 
 /* =========================================================
    KONFIRMASI / TOLAK PEMBAYARAN
@@ -98,13 +74,11 @@ if(isset($_POST['next_status'])){
 if(isset($_POST['aksi_konfirmasi'])){
     $id  = (int)$_POST['id_pemesanan'];
     $aksi = $_POST['aksi_konfirmasi'];
-
     if($aksi === 'konfirmasi'){
         mysqli_query($conn,"UPDATE pemesanan SET status='lunas' WHERE id_pemesanan='$id'");
     } elseif($aksi === 'tolak'){
         mysqli_query($conn,"UPDATE pemesanan SET status='dibatalkan', bukti_bayar=NULL WHERE id_pemesanan='$id'");
     }
-
     header("Location: dashboard_admin.php?page=konfirmasi");
     exit;
 }
@@ -122,33 +96,20 @@ if(isset($_POST['selesai_refund'])){
 /* =========================================================
    STATISTIK
 ========================================================= */
-
 $hari_ini = date('Y-m-d');
 
-$q_booking = mysqli_query($conn,"
-SELECT COUNT(*) as total
-FROM pemesanan
-WHERE tanggal='$hari_ini'
-");
-
+$q_booking = mysqli_query($conn,"SELECT COUNT(*) as total FROM pemesanan WHERE tanggal='$hari_ini'");
 $total_booking = mysqli_fetch_assoc($q_booking)['total'];
 
-$q_pending = mysqli_query($conn,"
-SELECT COUNT(*) as total
-FROM pemesanan
-WHERE status='pending'
-");
-
+$q_pending = mysqli_query($conn,"SELECT COUNT(*) as total FROM pemesanan WHERE status='pending'");
 $total_pending = mysqli_fetch_assoc($q_pending)['total'];
 
 $q_income_today = mysqli_query($conn,"
 SELECT SUM(pl.harga) as total
 FROM pemesanan p
 JOIN paket_layanan pl ON p.id_paket = pl.id_paket
-WHERE p.status='lunas'
-AND DATE(p.tanggal)=CURDATE()
+WHERE p.status='lunas' AND DATE(p.tanggal)=CURDATE()
 ");
-
 $income_today = mysqli_fetch_assoc($q_income_today)['total'] ?? 0;
 
 $q_income_month = mysqli_query($conn,"
@@ -159,24 +120,15 @@ WHERE p.status='lunas'
 AND MONTH(p.tanggal)=MONTH(CURDATE())
 AND YEAR(p.tanggal)=YEAR(CURDATE())
 ");
-
 $income_month = mysqli_fetch_assoc($q_income_month)['total'] ?? 0;
 
 /* =========================================================
    UPDATE STATUS CUCI
 ========================================================= */
-
 if(isset($_POST['update_status'])){
-
     $id = $_POST['id_pemesanan'];
     $status_cuci = $_POST['status_cuci'];
-
-    mysqli_query($conn,"
-    UPDATE pemesanan
-    SET status_cuci='$status_cuci'
-    WHERE id_pemesanan='$id'
-    ");
-
+    mysqli_query($conn,"UPDATE pemesanan SET status_cuci='$status_cuci' WHERE id_pemesanan='$id'");
     header("Location: dashboard_admin.php");
     exit;
 }
@@ -184,38 +136,16 @@ if(isset($_POST['update_status'])){
 /* =========================================================
    TAMBAH PELANGGAN
 ========================================================= */
-
 if(isset($_POST['tambah_pelanggan'])){
-
     $nama = $_POST['nama_pelanggan'];
     $telepon = $_POST['no_telepon'];
     $paket = $_POST['id_paket'];
     $tanggal = $_POST['tanggal'];
     $jam = $_POST['jam'];
-
     mysqli_query($conn,"
-    INSERT INTO pemesanan(
-        nama_pelanggan,
-        no_telepon,
-        id_paket,
-        tanggal,
-        jam,
-        status,
-        status_cuci,
-        created_at
-    )
-    VALUES(
-        '$nama',
-        '$telepon',
-        '$paket',
-        '$tanggal',
-        '$jam',
-        'pending',
-        'belum_dicuci',
-        NOW()
-    )
+    INSERT INTO pemesanan(nama_pelanggan,no_telepon,id_paket,tanggal,jam,status,status_cuci,created_at)
+    VALUES('$nama','$telepon','$paket','$tanggal','$jam','pending','belum_dicuci',NOW())
     ");
-
     header("Location: dashboard_admin.php?page=booking");
     exit;
 }
@@ -224,27 +154,16 @@ if(isset($_POST['tambah_pelanggan'])){
    TAMBAH PELANGGAN WALK-IN
 ========================================================= */
 if(isset($_POST['tambah_walkin'])){
-
     $nama    = mysqli_real_escape_string($conn, $_POST['nama_pelanggan']);
     $telepon = mysqli_real_escape_string($conn, $_POST['no_telepon']);
     $plat    = strtoupper(mysqli_real_escape_string($conn, $_POST['plat_mobil']));
     $paket   = (int)$_POST['id_paket'];
-    $tanggal = date('Y-m-d'); // hari ini
+    $tanggal = date('Y-m-d');
     $jam     = mysqli_real_escape_string($conn, $_POST['jam']);
-
     mysqli_query($conn,"
-        INSERT INTO pemesanan(
-            nama_pelanggan, no_telepon, plat_mobil,
-            id_paket, tanggal, jam,
-            status, status_cuci, created_at
-        )
-        VALUES(
-            '$nama', '$telepon', '$plat',
-            '$paket', '$tanggal', '$jam',
-            'lunas', 'belum_dicuci', NOW()
-        )
+        INSERT INTO pemesanan(nama_pelanggan,no_telepon,plat_mobil,id_paket,tanggal,jam,status,status_cuci,created_at)
+        VALUES('$nama','$telepon','$plat','$paket','$tanggal','$jam','lunas','belum_dicuci',NOW())
     ");
-
     $id_baru = mysqli_insert_id($conn);
     header("Location: dashboard_admin.php?page=walkin&sukses=$id_baru");
     exit;
@@ -253,58 +172,25 @@ if(isset($_POST['tambah_walkin'])){
 /* =========================================================
    CRUD MENU
 ========================================================= */
-
 if(isset($_POST['aksi_menu'])){
-
     $aksi = $_POST['aksi_menu'];
-
     if($aksi == "tambah"){
-
         $nama = $_POST['nama_paket'];
         $harga = $_POST['harga'];
         $deskripsi = $_POST['deskripsi'];
-
-        mysqli_query($conn,"
-        INSERT INTO paket_layanan(
-            nama_paket,
-            harga,
-            deskripsi
-        )
-        VALUES(
-            '$nama',
-            '$harga',
-            '$deskripsi'
-        )
-        ");
+        mysqli_query($conn,"INSERT INTO paket_layanan(nama_paket,harga,deskripsi) VALUES('$nama','$harga','$deskripsi')");
     }
-
     if($aksi == "edit"){
-
         $id = $_POST['id_paket'];
         $nama = $_POST['nama_paket'];
         $harga = $_POST['harga'];
         $deskripsi = $_POST['deskripsi'];
-
-        mysqli_query($conn,"
-        UPDATE paket_layanan
-        SET
-            nama_paket='$nama',
-            harga='$harga',
-            deskripsi='$deskripsi'
-        WHERE id_paket='$id'
-        ");
+        mysqli_query($conn,"UPDATE paket_layanan SET nama_paket='$nama',harga='$harga',deskripsi='$deskripsi' WHERE id_paket='$id'");
     }
-
     if($aksi == "hapus"){
-
         $id = $_POST['id_paket'];
-
-        mysqli_query($conn,"
-        DELETE FROM paket_layanan
-        WHERE id_paket='$id'
-        ");
+        mysqli_query($conn,"DELETE FROM paket_layanan WHERE id_paket='$id'");
     }
-
     header("Location: dashboard_admin.php?page=menu");
     exit;
 }
@@ -312,7 +198,6 @@ if(isset($_POST['aksi_menu'])){
 /* =========================================================
    QUERY
 ========================================================= */
-
 $q_booking_today = mysqli_query($conn,"
 SELECT p.*, pl.nama_paket, pl.harga
 FROM pemesanan p
@@ -321,14 +206,9 @@ WHERE p.tanggal = CURDATE()
 ORDER BY p.jam ASC
 ");
 
-$q_paket = mysqli_query($conn,"
-SELECT *
-FROM paket_layanan
-ORDER BY id_paket DESC
-");
+$q_paket = mysqli_query($conn,"SELECT * FROM paket_layanan ORDER BY id_paket DESC");
 
 $page = $_GET['page'] ?? 'dashboard';
-
 ?>
 
 <!DOCTYPE html>
@@ -336,1709 +216,2054 @@ $page = $_GET['page'] ?? 'dashboard';
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<title>Dashboard Admin</title>
-
+<title>Dashboard Admin — Habibi Garage</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-
-*{
-margin:0;
-padding:0;
-box-sizing:border-box;
-font-family:'Poppins',sans-serif;
+/* ====================================================
+   RESET & BASE
+==================================================== */
+*, *::before, *::after {
+  margin: 0; padding: 0; box-sizing: border-box;
 }
 
-body{
-background:#d9d9d9;
-padding:25px;
+:root {
+  --sidebar-w: 260px;
+  --navy: #0f1b2d;
+  --navy-hover: #1a2f4a;
+  --navy-light: #162336;
+  --accent: #119cc2;
+  --accent-hover: #0e87a9;
+  --accent-light: #e0f7fe;
+  --success: #22c55e;
+  --danger: #ef4444;
+  --warning: #f59e0b;
+  --bg: #f0f4f8;
+  --surface: #ffffff;
+  --border: #e5eaf0;
+  --text: #1e293b;
+  --muted: #64748b;
+  --sidebar-text: #94a3b8;
+  --sidebar-active-bg: rgba(17,156,194,0.18);
+  --sidebar-active-text: #7dd3fc;
+  --radius: 16px;
+  --radius-sm: 10px;
+  --shadow: 0 4px 20px rgba(0,0,0,0.06);
+  --shadow-lg: 0 8px 32px rgba(0,0,0,0.10);
 }
 
-.container{
-width:100%;
-max-width:1450px;
-margin:auto;
-background:white;
-border-radius:28px;
-overflow:hidden;
-box-shadow:0 10px 30px rgba(0,0,0,0.1);
+html, body {
+  height: 100%;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
 }
 
-.navbar{
-background:#0f1b2d;
-padding:35px;
-display:flex;
-justify-content:space-between;
-align-items:center;
-flex-wrap:wrap;
-gap:20px;
+/* ====================================================
+   LAYOUT
+==================================================== */
+.layout {
+  display: flex;
+  min-height: 100vh;
 }
 
-.logo h2{
-color:white;
-font-size:28px;
+/* ====================================================
+   SIDEBAR
+==================================================== */
+.sidebar {
+  width: var(--sidebar-w);
+  background: var(--navy);
+  position: fixed;
+  top: 0; left: 0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  z-index: 100;
+  overflow: hidden;
+  transition: width 0.3s ease;
 }
 
-.nav-links{
-display:flex;
-gap:12px;
-flex-wrap:wrap;
+/* Subtle texture */
+.sidebar::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: radial-gradient(ellipse at top left, rgba(17,156,194,0.12) 0%, transparent 60%);
+  pointer-events: none;
 }
 
-.nav-links a{
-text-decoration:none;
-color:#d8dbe2;
-padding:12px 18px;
-border-radius:12px;
-transition:0.3s;
-font-size:14px;
+.sidebar-header {
+  padding: 28px 22px 24px;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+  flex-shrink: 0;
 }
 
-.nav-links a:hover,
-.nav-links .active{
-background:white;
-color:#0f1b2d;
+.sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
-.main{
-padding:30px;
+.brand-icon {
+  width: 40px; height: 40px;
+  background: linear-gradient(135deg, var(--accent), #0e87a9);
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
 }
 
-.cards{
-display:grid;
-grid-template-columns:repeat(3,1fr);
-gap:20px;
-margin-bottom:30px;
+.brand-text h2 {
+  color: white;
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: -0.3px;
+  line-height: 1.2;
 }
 
-.card{
-background:white;
-padding:25px;
-border-radius:22px;
-box-shadow:0 8px 20px rgba(0,0,0,0.08);
+.brand-text span {
+  color: var(--sidebar-text);
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 1px;
 }
 
-.card h5{
-color:#777;
-margin-bottom:10px;
+/* Nav */
+.sidebar-nav {
+  flex: 1;
+  padding: 20px 14px;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+.sidebar-nav::-webkit-scrollbar { display: none; }
+
+.nav-section-label {
+  color: rgba(148,163,184,0.5);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  padding: 0 10px;
+  margin-bottom: 8px;
+  margin-top: 16px;
+}
+.nav-section-label:first-child { margin-top: 0; }
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 12px;
+  border-radius: var(--radius-sm);
+  color: var(--sidebar-text);
+  text-decoration: none;
+  font-size: 13.5px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  position: relative;
+  margin-bottom: 2px;
 }
 
-.card h2{
-font-size:30px;
-color:#0f1b2d;
-margin-bottom:10px;
+.nav-item:hover {
+  background: rgba(255,255,255,0.06);
+  color: white;
 }
 
-.grid{
-display:grid;
-grid-template-columns:1.5fr 1fr;
-gap:25px;
+.nav-item.active {
+  background: var(--sidebar-active-bg);
+  color: var(--sidebar-active-text);
+  font-weight: 600;
 }
 
-.box{
-background:white;
-padding:25px;
-border-radius:22px;
-box-shadow:0 8px 20px rgba(0,0,0,0.08);
+.nav-item.active::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 20%; bottom: 20%;
+  width: 3px;
+  background: var(--accent);
+  border-radius: 0 4px 4px 0;
 }
 
-.box-title{
-display:flex;
-justify-content:space-between;
-align-items:center;
-margin-bottom:20px;
+.nav-icon {
+  width: 20px; height: 20px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  font-size: 16px;
 }
 
-.booking-item{
-background:#f7f8fc;
-padding:18px;
-border-radius:18px;
-margin-bottom:15px;
+.nav-badge {
+  margin-left: auto;
+  background: var(--danger);
+  color: white;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: 20px;
+  min-width: 20px;
+  text-align: center;
 }
 
-.booking-item h4{
-margin-bottom:5px;
-color:#0f1b2d;
+/* Sidebar footer */
+.sidebar-footer {
+  padding: 14px;
+  border-top: 1px solid rgba(255,255,255,0.07);
+  flex-shrink: 0;
 }
 
-.booking-item p{
-color:#777;
-font-size:14px;
-margin-bottom:12px;
+.logout-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 12px;
+  border-radius: var(--radius-sm);
+  color: #fca5a5;
+  text-decoration: none;
+  font-size: 13.5px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  width: 100%;
 }
 
-.time{
-background:#119cc2;
-color:white;
-padding:10px 15px;
-border-radius:20px;
-display:inline-block;
-font-size:13px;
-margin-top:10px;
+.logout-btn:hover {
+  background: rgba(239,68,68,0.15);
+  color: #f87171;
 }
 
-form{
-display:flex;
-flex-direction:column;
-gap:15px;
+/* ====================================================
+   MAIN CONTENT
+==================================================== */
+.main-wrap {
+  margin-left: var(--sidebar-w);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
 }
 
-input,
-select{
-padding:14px;
-border-radius:12px;
-border:1px solid #ddd;
-outline:none;
+/* ====================================================
+   TOPBAR
+==================================================== */
+.topbar {
+  background: var(--surface);
+  padding: 0 32px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border);
+  position: sticky; top: 0;
+  z-index: 50;
+  gap: 16px;
 }
 
-button{
-padding:14px;
-border:none;
-border-radius:12px;
-background:#0f1b2d;
-color:white;
-cursor:pointer;
-font-weight:600;
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
 }
 
-.form-box{
-background:white;
-padding:25px;
-border-radius:22px;
-box-shadow:0 8px 20px rgba(0,0,0,0.08);
-max-width:700px;
+.page-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text);
 }
 
-.menu-item{
-background:#f7f8fc;
-padding:18px;
-border-radius:16px;
-display:flex;
-justify-content:space-between;
-align-items:center;
-margin-bottom:15px;
+.breadcrumb {
+  font-size: 12px;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
-.action-btn{
-display:flex;
-gap:10px;
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
-.edit{
-background:#119cc2;
+.topbar-date {
+  font-size: 12px;
+  color: var(--muted);
+  background: var(--bg);
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-weight: 600;
 }
 
-.delete{
-background:#ef5350;
+.admin-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg);
+  padding: 6px 14px 6px 8px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
 }
 
-.table-box{
-background:white;
-padding:25px;
-border-radius:22px;
-box-shadow:0 8px 20px rgba(0,0,0,0.08);
-overflow:auto;
+.admin-avatar {
+  width: 28px; height: 28px;
+  background: linear-gradient(135deg, var(--accent), #0e87a9);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  color: white;
+  font-size: 12px;
+  font-weight: 800;
 }
 
-table{
-width:100%;
-border-collapse:collapse;
+/* ====================================================
+   CONTENT AREA
+==================================================== */
+.content {
+  flex: 1;
+  padding: 28px 32px;
 }
 
-th{
-background:#0f1b2d;
-color:white;
-padding:14px;
-text-align:left;
-font-size:14px;
+/* ====================================================
+   PAGE HEADER
+==================================================== */
+.page-header {
+  margin-bottom: 24px;
 }
 
-td{
-padding:14px;
-border-bottom:1px solid #eee;
-font-size:14px;
+.page-header h1 {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--text);
+  line-height: 1.2;
 }
 
-.calendar{
-width:100%;
-border-spacing:10px;
+.page-header p {
+  color: var(--muted);
+  font-size: 13px;
+  margin-top: 4px;
 }
 
-.calendar td{
-background:#f7f8fc;
-padding:15px;
-border-radius:12px;
-text-align:center;
-cursor:pointer;
-transition:0.3s;
+/* ====================================================
+   STAT CARDS
+==================================================== */
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+  margin-bottom: 24px;
 }
 
-.calendar td:hover{
-background:#0f1b2d;
-color:white;
+.stat-card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 22px 24px;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.2s, box-shadow 0.2s;
 }
 
-@media(max-width:1000px){
-
-.cards,
-.grid{
-grid-template-columns:1fr;
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
 }
 
+.stat-card::after {
+  content: '';
+  position: absolute;
+  right: -10px; top: -10px;
+  width: 70px; height: 70px;
+  border-radius: 50%;
+  opacity: 0.08;
 }
 
+.stat-card.blue::after  { background: #3b82f6; }
+.stat-card.green::after { background: var(--success); }
+.stat-card.orange::after{ background: var(--warning); }
+.stat-card.purple::after{ background: #a855f7; }
 
-/* Override hover untuk kalender */
-.calendar td[data-disabled]:hover {
-  background: #e5e7eb !important;
-  color: #9ca3af !important;
-  cursor: not-allowed !important;
+.stat-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
-.calendar td[data-today]:hover {
-  background: #0f1b2d !important;
-  color: white !important;
+
+.stat-icon {
+  width: 30px; height: 30px;
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px;
+}
+
+.stat-icon.blue   { background: #dbeafe; color: #2563eb; }
+.stat-icon.green  { background: #dcfce7; color: #16a34a; }
+.stat-icon.orange { background: #fff7ed; color: #d97706; }
+.stat-icon.purple { background: #f5f3ff; color: #7c3aed; }
+
+.stat-value {
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--text);
+  line-height: 1.1;
+}
+
+.stat-sub {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 6px;
+}
+
+/* ====================================================
+   GRID LAYOUT
+==================================================== */
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr;
+  gap: 20px;
+}
+
+/* ====================================================
+   CARD / BOX
+==================================================== */
+.card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 22px 0;
+  margin-bottom: 16px;
+}
+
+.card-head h3 {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.card-head span {
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.card-body {
+  padding: 0 22px 22px;
+}
+
+/* ====================================================
+   BOOKING ITEM
+==================================================== */
+.booking-item {
+  background: var(--bg);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 10px;
+  border: 1px solid var(--border);
+  transition: box-shadow 0.2s;
+}
+
+.booking-item:hover {
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+}
+
+.booking-item-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 8px;
+}
+
+.booking-name {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--text);
+}
+
+.booking-paket {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.time-chip {
+  background: var(--navy);
+  color: white;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  color: white;
+  margin-bottom: 8px;
+}
+
+/* ====================================================
+   PROGRESS BUTTON
+==================================================== */
+.progress-btn {
+  width: 100%;
+  padding: 9px 14px;
+  border: none;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: filter 0.2s, transform 0.1s;
+}
+
+.progress-btn:hover:not(:disabled) {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+}
+
+.progress-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ====================================================
+   FORMS
+==================================================== */
+.form-card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  padding: 26px;
+}
+
+.form-card h3 {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 18px;
+  color: var(--text);
+}
+
+.form-group {
+  margin-bottom: 14px;
+}
+
+.form-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  margin-bottom: 6px;
+}
+
+.form-control {
+  width: 100%;
+  padding: 11px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 13.5px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  background: white;
+  color: var(--text);
+}
+
+.form-control:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(17,156,194,0.12);
+}
+
+.btn {
+  padding: 11px 22px;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 13.5px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-primary {
+  background: var(--navy);
+  color: white;
+}
+.btn-primary:hover { background: var(--navy-hover); }
+
+.btn-accent {
+  background: var(--accent);
+  color: white;
+}
+.btn-accent:hover { background: var(--accent-hover); }
+
+.btn-success {
+  background: var(--success);
+  color: white;
+}
+.btn-success:hover { background: #16a34a; }
+
+.btn-danger {
+  background: var(--danger);
+  color: white;
+}
+.btn-danger:hover { background: #dc2626; }
+
+.btn-secondary {
+  background: var(--bg);
+  color: var(--text);
+  border: 1.5px solid var(--border);
+}
+.btn-secondary:hover { background: var(--border); }
+
+.btn-full { width: 100%; justify-content: center; }
+.btn-sm { padding: 7px 14px; font-size: 12px; }
+
+/* ====================================================
+   TABLE
+==================================================== */
+.table-wrap {
+  background: var(--surface);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.table-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 22px;
+  border-bottom: 1px solid var(--border);
+}
+
+.table-head h3 {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th {
+  background: var(--navy);
+  color: rgba(255,255,255,0.7);
+  padding: 12px 16px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+td {
+  padding: 13px 16px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+  color: var(--text);
+  vertical-align: middle;
+}
+
+tr:last-child td { border-bottom: none; }
+
+tr:hover td { background: #fafbfc; }
+
+/* ====================================================
+   KALENDER BOOKING
+==================================================== */
+.calendar-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.cal-nav-btn {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  width: 32px; height: 32px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  font-size: 16px;
+  color: var(--text);
+  transition: background 0.2s;
+}
+
+.cal-nav-btn:hover { background: var(--border); }
+
+.cal-month-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.calendar-header-row {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.cal-day-label {
+  text-align: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--muted);
+  padding: 4px 0;
+  text-transform: uppercase;
+}
+
+.cal-day-label.friday { color: var(--danger); }
+
+/* ====================================================
+   MENU ITEM
+==================================================== */
+.menu-item {
+  background: var(--bg);
+  border-radius: 12px;
+  padding: 16px 18px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  border: 1px solid var(--border);
+  transition: box-shadow 0.2s;
+}
+
+.menu-item:hover { box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+
+.menu-item-info h4 {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.menu-item-info p {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 3px;
+}
+
+.action-row {
+  display: flex;
+  gap: 8px;
+}
+
+/* ====================================================
+   ALERTS / PANELS
+==================================================== */
+.alert {
+  padding: 14px 18px;
+  border-radius: 12px;
+  font-size: 13px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.alert-success { background: #dcfce7; border: 1px solid #86efac; color: #15803d; }
+.alert-warning { background: #fff7ed; border: 1px solid #fed7aa; color: #92400e; }
+.alert-info    { background: #e0f7fe; border: 1px solid #bae6fd; color: #0369a1; }
+.alert-danger  { background: #fee2e2; border: 1px solid #fecaca; color: #991b1b; }
+
+/* ====================================================
+   KONFIRMASI PEMBAYARAN
+==================================================== */
+.konfirmasi-card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  padding: 26px;
+  margin-bottom: 20px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 26px;
+  align-items: start;
+}
+
+.konfirmasi-inner {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 20px;
+}
+
+.konfirmasi-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 160px;
+}
+
+/* ====================================================
+   EMPTY STATE
+==================================================== */
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--muted);
+}
+
+.empty-state .empty-icon {
+  font-size: 48px;
+  margin-bottom: 12px;
+}
+
+.empty-state h3 {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+
+.empty-state p {
+  font-size: 13px;
+}
+
+/* ====================================================
+   MOBILE TOGGLE
+==================================================== */
+.sidebar-toggle {
+  display: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  color: var(--text);
+  font-size: 20px;
+}
+
+/* ====================================================
+   RESPONSIVE
+==================================================== */
+@media (max-width: 1100px) {
+  .stat-grid { grid-template-columns: repeat(2, 1fr); }
+  .grid-2 { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 768px) {
+  :root { --sidebar-w: 0px; }
+
+  .sidebar {
+    width: 260px;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+  }
+
+  .sidebar.open {
+    transform: translateX(0);
+    width: 260px;
+  }
+
+  .sidebar-toggle { display: block; }
+
+  .main-wrap { margin-left: 0; }
+
+  .stat-grid { grid-template-columns: 1fr; }
+
+  .konfirmasi-card {
+    grid-template-columns: 1fr;
+  }
+
+  .konfirmasi-inner {
+    grid-template-columns: 1fr;
+  }
+
+  .content { padding: 20px 16px; }
+  .topbar { padding: 0 16px; }
+}
+
+@media (max-width: 480px) {
+  .topbar-date { display: none; }
+}
+
+/* ====================================================
+   CALENDAR GRID (booking page)
+==================================================== */
+#gridKalender {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  margin-bottom: 16px;
 }
 
 </style>
 </head>
 <body>
 
-<div class="container">
-
-<div class="navbar">
-
-<div class="logo">
-<h2>Habibi Garage</h2>
-</div>
-
-<div class="nav-links">
-
-<a href="?page=dashboard"
-class="<?= $page=='dashboard' ? 'active' : '' ?>">
-Dashboard
-</a>
-
-<a href="?page=booking"
-class="<?= $page=='booking' ? 'active' : '' ?>">
-Booking
-</a>
-
-<a href="?page=menu"
-class="<?= $page=='menu' ? 'active' : '' ?>">
-Menu
-</a>
-
-<a href="?page=walkin"
-class="<?= $page=='walkin' ? 'active' : '' ?>">
-Walk-In
-</a>
-
-<a href="?page=konfirmasi"
-class="<?= $page=='konfirmasi' ? 'active' : '' ?>"
-style="position:relative;">
-Konfirmasi
-<?php if($total_pending > 0): ?>
-<span style="position:absolute;top:4px;right:4px;background:#ef5350;color:white;border-radius:50%;font-size:10px;width:17px;height:17px;display:flex;align-items:center;justify-content:center;font-weight:700;"><?= $total_pending ?></span>
-<?php endif; ?>
-</a>
-
-<a href="?page=recap"
-class="<?= $page=='recap' ? 'active' : '' ?>">
-Recap
-</a>
-
-<a href="?page=admin"
-class="<?= $page=='admin' ? 'active' : '' ?>">
-Admin
-</a>
-
-<a href="?logout=true">
-Logout
-</a>
-
-</div>
-
-</div>
-
-<div class="main">
-
-<?php if(!empty($_GET['wa_url'])): ?>
-<script>
-  // Buka WhatsApp di tab baru
-  window.open(<?= json_encode(urldecode($_GET['wa_url'])) ?>, '_blank');
-</script>
-<?php endif; ?>
-
-
-<!-- =========================================================
-DASHBOARD
-========================================================= -->
-
-<?php if($page == 'dashboard'): ?>
-
-<div class="cards">
-
-<div class="card">
-<h5>Booking Hari Ini</h5>
-<h2><?= $total_booking ?></h2>
-<p>Total booking hari ini</p>
-</div>
-
-<div class="card">
-<h5>Konfirmasi Admin</h5>
-<h2><?= $total_pending ?></h2>
-<p>Menunggu konfirmasi</p>
-</div>
-
-<div class="card">
-<h5>Pendapatan Hari Ini</h5>
-<h2>Rp <?= number_format($income_today,0,',','.') ?></h2>
-<p>Total income hari ini</p>
-</div>
-
-</div>
-
-<div class="grid">
-
-<div class="box">
-
-<div class="box-title">
-<h3>Booking Hari Ini</h3>
-<p><?= date('d F Y') ?></p>
-</div>
-
-<?php while($row=mysqli_fetch_assoc($q_booking_today)): ?>
-
-<div class="booking-item">
-
-<h4><?= htmlspecialchars($row['nama_pelanggan']) ?></h4>
-
-<p>
-<?= htmlspecialchars($row['nama_paket']) ?>
-</p>
-
-<?php
-$sc = $row['status_cuci'];
-$btn_label = $sc === 'belum_dicuci' ? '&#9654; Mulai Proses'
-           : ($sc === 'diproses'    ? '&#10004; Selesai Dicuci'
-           :                         '&#10004; Sudah Selesai');
-$btn_color = $sc === 'belum_dicuci' ? '#119cc2'
-           : ($sc === 'diproses'    ? '#22c55e'
-           :                         '#9ca3af');
-$btn_disabled = $sc === 'selesai' ? 'disabled' : '';
-$badge_label  = $sc === 'belum_dicuci' ? 'Belum Dicuci'
-              : ($sc === 'diproses'    ? 'Diproses'
-              :                         'Selesai');
-$badge_color  = $sc === 'belum_dicuci' ? '#f59e0b'
-              : ($sc === 'diproses'    ? '#3b82f6'
-              :                         '#22c55e');
-?>
-<div style="margin-bottom:8px;">
-  <span style="font-size:12px;font-weight:600;color:white;background:<?= $badge_color ?>;padding:3px 10px;border-radius:20px;">
-    <?= $badge_label ?>
-  </span>
-</div>
-<form method="POST" style="display:block;">
-  <input type="hidden" name="id_pemesanan" value="<?= $row['id_pemesanan'] ?>">
-  <button type="submit" name="next_status" <?= $btn_disabled ?>
-    style="background:<?= $btn_color ?>;padding:10px 16px;border-radius:10px;font-size:13px;width:100%;<?= $sc==='selesai' ? 'opacity:.5;cursor:not-allowed;' : '' ?>">
-    <?= $btn_label ?>
-  </button>
-</form>
-
-<div class="time">
-<?= htmlspecialchars($row['jam']) ?>
-</div>
-
-</div>
-
-<?php endwhile; ?>
-
-</div>
-
-<div class="box">
-
-<div class="box-title">
-<h3>Kalender Booking</h3>
-</div>
-
-<table class="calendar">
-<tr>
-<th style="color:#777;font-size:12px;padding:8px;text-align:center;">Min</th>
-<th style="color:#777;font-size:12px;padding:8px;text-align:center;">Sen</th>
-<th style="color:#777;font-size:12px;padding:8px;text-align:center;">Sel</th>
-<th style="color:#777;font-size:12px;padding:8px;text-align:center;">Rab</th>
-<th style="color:#777;font-size:12px;padding:8px;text-align:center;">Kam</th>
-<th style="color:#ef5350;font-size:12px;padding:8px;text-align:center;">Jum</th>
-<th style="color:#777;font-size:12px;padding:8px;text-align:center;">Sab</th>
-</tr>
-<?php
-$tahun_kal  = (int)date('Y');
-$bulan_kal  = (int)date('m');
-$hari_ini_n = (int)date('j');
-$total_hari = (int)date('t');
-$awal_dow   = (int)date('w', mktime(0,0,0,$bulan_kal,1,$tahun_kal)); // 0=Min
-
-// Ambil semua tanggal yang ada booking bulan ini
-$tgl_booking = [];
-$q_kal = mysqli_query($conn,"
-    SELECT DISTINCT DAY(tanggal) as hari
-    FROM pemesanan
-    WHERE MONTH(tanggal)='$bulan_kal' AND YEAR(tanggal)='$tahun_kal'
-");
-while($rk = mysqli_fetch_assoc($q_kal)) $tgl_booking[] = (int)$rk['hari'];
-
-$col = 0;
-echo '<tr>';
-// Offset kolom awal
-for($i=0; $i<$awal_dow; $i++){
-    echo '<td style="background:transparent;border:none;"></td>';
-    $col++;
-}
-for($d=1; $d<=$total_hari; $d++){
-    if($col==7){ echo '</tr><tr>'; $col=0; }
-    $dow_hari = ($awal_dow + $d - 1) % 7;
-    $is_past  = $d < $hari_ini_n;
-    $is_today = $d === $hari_ini_n;
-    $is_jumat = $dow_hari === 5;
-    $ada_booking = in_array($d, $tgl_booking);
-
-    $tgl_str = date('Y-m-d', mktime(0,0,0,$bulan_kal,$d,$tahun_kal));
-
-    $style = '';
-    $extra = '';
-    if($is_today){
-        $style = 'background:#0f1b2d;color:white;font-weight:700;';
-        $extra = 'data-today="1"';
-    } elseif($is_past || $is_jumat){
-        $style = 'background:#e5e7eb;color:#9ca3af;cursor:not-allowed;opacity:.6;';
-        $extra = 'data-disabled="1"';
-    } elseif($ada_booking){
-        $style = 'background:#dbeafe;color:#1e40af;font-weight:600;';
-    }
-
-    $dot = $ada_booking && !$is_past && !$is_jumat
-         ? '<span style="display:block;width:5px;height:5px;border-radius:50%;background:#119cc2;margin:3px auto 0;"></span>'
-         : '';
-
-    echo "<td style='{$style}' {$extra} data-tgl='{$tgl_str}' onclick='klikKalender(this)'>{$d}{$dot}</td>";
-    $col++;
-}
-// Sisa kolom
-while($col<7){ echo '<td style="background:transparent;border:none;"></td>'; $col++; }
-echo '</tr>';
-?>
-</table>
-<div id="panelKalender" style="display:none;margin-top:20px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:14px;padding:18px;">
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-    <h4 id="panelTanggalLabel" style="color:#0f1b2d;font-size:14px;"></h4>
-    <button onclick="document.getElementById('panelKalender').style.display='none'"
-      style="background:none;border:none;color:#9ca3af;font-size:18px;cursor:pointer;padding:0;line-height:1;">&#215;</button>
-  </div>
-  <div id="panelKalenderIsi">
-    <p style="color:#9ca3af;font-size:13px;">Klik tanggal untuk melihat booking.</p>
-  </div>
-</div>
-
-<div style="margin-top:20px;">
-
-<h4 style="margin-bottom:15px;">
-Booking Hari Ini
-</h4>
-
-<?php
-mysqli_data_seek($q_booking_today,0);
-
-while($b=mysqli_fetch_assoc($q_booking_today)):
-?>
-
-<div style="background:#f7f8fc;padding:12px;border-radius:12px;margin-bottom:10px;">
-
-<?= htmlspecialchars($b['nama_pelanggan']) ?>
--
-<?= htmlspecialchars($b['jam']) ?>
-
-</div>
-
-<?php endwhile; ?>
-
-</div>
-
-</div>
-
-</div>
-
-<?php endif; ?>
-
-
-<!-- =========================================================
-BOOKING
-========================================================= -->
-
-<?php if($page == 'booking'): ?>
-
-<?php
-// Ambil slot yang sudah terpesan hari ini untuk ditampilkan awal
-$slot_booked_today = [];
-$q_slot_today = mysqli_query($conn,"SELECT jam FROM pemesanan WHERE tanggal='".date('Y-m-d')."'");
-while($rs = mysqli_fetch_assoc($q_slot_today)) $slot_booked_today[] = $rs['jam'];
-?>
-
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:25px;align-items:start;">
-
-<!-- KIRI: Form -->
-<div class="form-box" style="max-width:100%;">
-<div class="box-title">
-<h3>Tambah Booking Pelanggan</h3>
-</div>
-
-<form method="POST" id="formBookingAdmin">
-<input type="hidden" name="tambah_pelanggan" value="1">
-
-<input type="text" name="nama_pelanggan" placeholder="Nama Pelanggan" required>
-<input type="text" name="no_telepon" placeholder="No Telepon" required>
-
-<select name="id_paket" required>
-<option value="">Pilih Paket</option>
-<?php
-mysqli_data_seek($q_paket,0);
-while($p=mysqli_fetch_assoc($q_paket)):
-?>
-<option value="<?= $p['id_paket'] ?>"><?= htmlspecialchars($p['nama_paket']) ?></option>
-<?php endwhile; ?>
-</select>
-
-<!-- Tanggal & jam disembunyikan, diisi otomatis dari kalender -->
-<input type="hidden" name="tanggal" id="inputTanggal" required>
-<input type="hidden" name="jam" id="inputJam" required>
-
-<!-- Tampilan tanggal & jam yang dipilih -->
-<div id="pilihanInfo" style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:12px;padding:14px;font-size:14px;color:#0f1b2d;display:none;">
-  <div style="margin-bottom:4px;">📅 <strong id="labelTanggal">-</strong></div>
-  <div>🕐 <strong id="labelJam">-</strong></div>
-</div>
-<div id="pilihanWarning" style="background:#fff7ed;border:1px solid #fed7aa;border-radius:12px;padding:12px;font-size:13px;color:#92400e;display:none;">
-  ⚠️ Pilih tanggal dan jam dari kalender di sebelah kanan.
-</div>
-
-<button type="submit" onclick="return validasiForm()">Tambah Booking</button>
-</form>
-</div>
-
-<!-- KANAN: Kalender + Slot Jam -->
-<div class="form-box" style="max-width:100%;">
-<div class="box-title">
-<h3>Pilih Tanggal & Jam</h3>
-</div>
-
-<!-- Header navigasi bulan -->
-<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
-  <button onclick="gantibulan(-1)" style="background:#f1f5f9;color:#0f1b2d;border-radius:8px;padding:6px 14px;font-size:18px;border:none;cursor:pointer;">‹</button>
-  <span id="labelBulanTahun" style="font-weight:700;font-size:15px;color:#0f1b2d;"></span>
-  <button onclick="gantibulan(1)" style="background:#f1f5f9;color:#0f1b2d;border-radius:8px;padding:6px 14px;font-size:18px;border:none;cursor:pointer;">›</button>
-</div>
-
-<!-- Kalender -->
-<table style="width:100%;border-spacing:4px;border-collapse:separate;">
-<tr>
-<?php foreach(['Min','Sen','Sel','Rab','Kam','Jum','Sab'] as $h): ?>
-<th style="text-align:center;font-size:11px;color:<?= $h==='Jum' ? '#ef5350' : '#9ca3af' ?>;padding:4px;font-weight:600;"><?= $h ?></th>
-<?php endforeach; ?>
-</tr>
-</table>
-<div id="gridKalender" style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:16px;"></div>
-
-<!-- Slot jam -->
-<div style="border-top:1px solid #eee;padding-top:14px;">
-  <div style="font-size:13px;font-weight:700;color:#0f1b2d;margin-bottom:10px;">
-    Slot Jam — <span id="labelTanggalSlot" style="color:#119cc2;">pilih tanggal dulu</span>
-  </div>
-  <div id="gridSlot" style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;">
-    <div style="grid-column:span 2;text-align:center;color:#9ca3af;font-size:13px;padding:16px 0;">
-      Klik tanggal untuk melihat slot jam
-    </div>
-  </div>
-</div>
-
-<!-- Legenda -->
-<div style="display:flex;gap:16px;margin-top:14px;flex-wrap:wrap;">
-  <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:#555;">
-    <span style="width:12px;height:12px;border-radius:3px;background:#e2f4ff;border:1px solid #119cc2;display:inline-block;"></span> Tersedia
-  </div>
-  <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:#555;">
-    <span style="width:12px;height:12px;border-radius:3px;background:#0f1b2d;display:inline-block;"></span> Dipilih
-  </div>
-  <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:#555;">
-    <span style="width:12px;height:12px;border-radius:3px;background:#fee2e2;border:1px solid #ef4444;display:inline-block;"></span> Penuh
-  </div>
-</div>
-
-</div><!-- /kanan -->
-</div><!-- /grid -->
-
-<script>
-const SEMUA_SLOT = [
-  '08:00 - 09:00','09:00 - 10:00','10:00 - 11:00','11:00 - 12:00',
-  '13:00 - 14:00','14:00 - 15:00','15:00 - 16:00'
-];
-const BULAN_ADM = ['Januari','Februari','Maret','April','Mei','Juni',
-                   'Juli','Agustus','September','Oktober','November','Desember'];
-const HARI_ADM  = ['Min','Sen','Sel','Rab','Kam','Jum','Sab'];
-
-let tglAktif   = null;
-let jamAktif   = null;
-let bulanView  = new Date().getMonth();
-let tahunView  = new Date().getFullYear();
-
-function gantibulan(arah){
-  bulanView += arah;
-  if(bulanView < 0){ bulanView = 11; tahunView--; }
-  if(bulanView > 11){ bulanView = 0; tahunView++; }
-  renderKalender();
-}
-
-function renderKalender(){
-  document.getElementById('labelBulanTahun').textContent =
-    BULAN_ADM[bulanView] + ' ' + tahunView;
-
-  const grid   = document.getElementById('gridKalender');
-  const today  = new Date(); today.setHours(0,0,0,0);
-  const awal   = new Date(tahunView, bulanView, 1).getDay();
-  const total  = new Date(tahunView, bulanView+1, 0).getDate();
-
-  let html = '';
-  // Offset awal
-  for(let i=0;i<awal;i++) html += '<div></div>';
-
-  for(let d=1;d<=total;d++){
-    const tgl  = new Date(tahunView, bulanView, d);
-    const dow  = tgl.getDay();
-    const tglStr = tahunView+'-'+String(bulanView+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
-    const isPast   = tgl < today;
-    const isJumat  = dow === 5;
-    const isToday  = tgl.getTime() === today.getTime();
-    const isAktif  = tglStr === tglAktif;
-
-    let bg='#f7f8fc', color='#0f1b2d', cursor='pointer', border='1px solid transparent', opacity='1';
-    if(isAktif){ bg='#0f1b2d'; color='white'; }
-    else if(isToday){ bg='#e0f2fe'; border='1px solid #119cc2'; }
-    else if(isPast||isJumat){ bg='#e5e7eb'; color='#9ca3af'; cursor='not-allowed'; opacity='.6'; }
-
-    const disabled = (isPast||isJumat) ? 'disabled' : '';
-    html += `<div onclick="pilihTanggal('${tglStr}','${d} ${BULAN_ADM[bulanView]}')" ${disabled}
-      style="text-align:center;padding:8px 4px;border-radius:8px;font-size:13px;font-weight:600;
-             background:${bg};color:${color};cursor:${cursor};border:${border};opacity:${opacity};
-             transition:.15s;">
-      ${d}
-    </div>`;
-  }
-  grid.innerHTML = html;
-}
-
-function pilihTanggal(tglStr, labelStr){
-  tglAktif = tglStr;
-  jamAktif = null;
-  document.getElementById('inputTanggal').value = tglStr;
-  document.getElementById('inputJam').value = '';
-  document.getElementById('labelTanggalSlot').textContent = labelStr;
-  document.getElementById('pilihanInfo').style.display = 'none';
-  document.getElementById('labelTanggal').textContent = labelStr;
-  renderKalender();
-  muatSlot(tglStr);
-}
-
-function muatSlot(tglStr){
-  const grid = document.getElementById('gridSlot');
-  grid.innerHTML = '<div style="grid-column:span 2;text-align:center;color:#9ca3af;font-size:13px;padding:16px 0;">Memuat slot...</div>';
-
-  fetch('dashboard_admin.php?ajax_booking=1&tgl=' + tglStr)
-    .then(r => r.json())
-    .then(data => {
-      const terpesan = data.map(b => b.jam);
-      grid.innerHTML = SEMUA_SLOT.map(slot => {
-        const penuh   = terpesan.includes(slot);
-        const dipilih = slot === jamAktif;
-        let bg = penuh ? '#fee2e2' : (dipilih ? '#0f1b2d' : '#e2f4ff');
-        let color = penuh ? '#ef4444' : (dipilih ? 'white' : '#0f1b2d');
-        let border = penuh ? '1px solid #ef4444' : (dipilih ? 'none' : '1px solid #119cc2');
-        let cursor = penuh ? 'not-allowed' : 'pointer';
-        let strike = penuh ? 'text-decoration:line-through;' : '';
-        const disabled = penuh ? 'disabled' : '';
-        return `<div onclick="pilihJam('${slot}')" ${disabled}
-          style="padding:10px;border-radius:10px;text-align:center;font-size:13px;font-weight:600;
-                 background:${bg};color:${color};border:${border};cursor:${cursor};${strike}transition:.15s;">
-          ${slot}${penuh ? '<br><span style="font-size:10px;font-weight:400;">Penuh</span>' : ''}
-        </div>`;
-      }).join('');
-    })
-    .catch(() => {
-      grid.innerHTML = '<div style="grid-column:span 2;color:#ef4444;font-size:13px;text-align:center;">Gagal memuat slot.</div>';
-    });
-}
-
-function pilihJam(slot){
-  jamAktif = slot;
-  document.getElementById('inputJam').value = slot;
-  // Update tampilan info
-  const info = document.getElementById('pilihanInfo');
-  document.getElementById('labelTanggal').textContent =
-    document.getElementById('labelTanggalSlot').textContent;
-  document.getElementById('labelJam').textContent = slot;
-  info.style.display = 'block';
-  document.getElementById('pilihanWarning').style.display = 'none';
-  // Re-render slot biar highlight update
-  muatSlot(tglAktif);
-}
-
-function validasiForm(){
-  if(!tglAktif || !jamAktif){
-    document.getElementById('pilihanWarning').style.display = 'block';
-    return false;
-  }
-  return true;
-}
-
-// Init
-renderKalender();
-</script>
-
-<?php endif; ?>
-
-
-<!-- =========================================================
-MENU
-========================================================= -->
-
-<?php if($page == 'menu'): ?>
-
-<div class="form-box" style="margin-bottom:30px;">
-
-<div class="box-title">
-<h3>Tambah Menu</h3>
-</div>
-
-<form method="POST">
-
-<input type="hidden"
-name="aksi_menu"
-value="tambah">
-
-<input type="text"
-name="nama_paket"
-placeholder="Nama Paket"
-required>
-
-<input type="number"
-name="harga"
-placeholder="Harga"
-required>
-
-<input type="text"
-name="deskripsi"
-placeholder="Deskripsi"
-required>
-
-<button type="submit">
-Tambah Paket
-</button>
-
-</form>
-
-</div>
-
-<?php
-mysqli_data_seek($q_paket,0);
-
-while($paket=mysqli_fetch_assoc($q_paket)):
-?>
-
-<div class="menu-item">
-
-<div>
-
-<h4><?= htmlspecialchars($paket['nama_paket']) ?></h4>
-
-<p>
-Rp <?= number_format($paket['harga'],0,',','.') ?>
-</p>
-
-</div>
-
-<div class="action-btn">
-
-<button
-class="edit"
-onclick="toggleEdit(<?= $paket['id_paket'] ?>)">
-Edit
-</button>
-
-<form method="POST">
-
-<input type="hidden"
-name="aksi_menu"
-value="hapus">
-
-<input type="hidden"
-name="id_paket"
-value="<?= $paket['id_paket'] ?>">
-
-<button type="submit" class="delete">
-Delete
-</button>
-
-</form>
-
-</div>
-
-</div>
-
-<div id="edit<?= $paket['id_paket'] ?>"
-style="display:none; margin-bottom:20px;">
-
-<form method="POST">
-
-<input type="hidden"
-name="aksi_menu"
-value="edit">
-
-<input type="hidden"
-name="id_paket"
-value="<?= $paket['id_paket'] ?>">
-
-<input type="text"
-name="nama_paket"
-value="<?= htmlspecialchars($paket['nama_paket']) ?>">
-
-<input type="number"
-name="harga"
-value="<?= $paket['harga'] ?>">
-
-<input type="text"
-name="deskripsi"
-value="<?= htmlspecialchars($paket['deskripsi']) ?>">
-
-<button type="submit">
-Simpan Perubahan
-</button>
-
-</form>
-
-</div>
-
-<?php endwhile; ?>
-
-<?php endif; ?>
-
-
-<!-- =========================================================
-RECAP
-========================================================= -->
-
-<?php if($page == 'recap'): ?>
-
-<?php
-
-$where = "WHERE p.status='lunas'";
-
-if(!empty($_GET['bulan']) && !empty($_GET['tahun'])){
-
-    $bulan = (int) $_GET['bulan'];
-    $tahun = (int) $_GET['tahun'];
-
-    $where .= "
-    AND MONTH(p.tanggal)='$bulan'
-    AND YEAR(p.tanggal)='$tahun'
-    ";
-}
-
-$q_recap = mysqli_query($conn,"
-SELECT p.*, pl.nama_paket, pl.harga
-FROM pemesanan p
-JOIN paket_layanan pl ON p.id_paket = pl.id_paket
-$where
-ORDER BY p.tanggal DESC
-");
-
-$q_total = mysqli_query($conn,"
-SELECT SUM(pl.harga) as total
-FROM pemesanan p
-JOIN paket_layanan pl ON p.id_paket = pl.id_paket
-$where
-");
-
-$total_recap = mysqli_fetch_assoc($q_total)['total'] ?? 0;
-
-?>
-
-<div class="cards">
-
-<div class="card">
-<h5>Income Hari Ini</h5>
-<h2>Rp <?= number_format($income_today,0,',','.') ?></h2>
-<p>Pendapatan hari ini</p>
-</div>
-
-<div class="card">
-<h5>Income Bulan Ini</h5>
-<h2>Rp <?= number_format($income_month,0,',','.') ?></h2>
-<p>Pendapatan bulan sekarang</p>
-</div>
-
-<div class="card">
-<h5>Total Recap</h5>
-<h2>Rp <?= number_format($total_recap,0,',','.') ?></h2>
-<p>Total hasil filter</p>
-</div>
-
-</div>
-
-<div class="form-box"
-style="max-width:100%; margin-bottom:30px;">
-
-<div class="box-title">
-<h3>Filter Recap Pendapatan</h3>
-</div>
-
-<form method="GET">
-
-<input type="hidden"
-name="page"
-value="recap">
-
-<select name="bulan">
-
-<option value="">
-Pilih Bulan
-</option>
-
-<?php for($i=1; $i<=12; $i++): ?>
-
-<option value="<?= $i ?>"
-
-<?= (isset($_GET['bulan']) && $_GET['bulan']==$i)
-? 'selected'
-: '' ?>>
-
-<?= date('F', mktime(0,0,0,$i,1)) ?>
-
-</option>
-
-<?php endfor; ?>
-
-</select>
-
-<select name="tahun">
-
-<option value="">
-Pilih Tahun
-</option>
-
-<?php for($y=date('Y'); $y>=2023; $y--): ?>
-
-<option value="<?= $y ?>"
-
-<?= (isset($_GET['tahun']) && $_GET['tahun']==$y)
-? 'selected'
-: '' ?>>
-
-<?= $y ?>
-
-</option>
-
-<?php endfor; ?>
-
-</select>
-
-<button type="submit">
-Cari Recap
-</button>
-
-</form>
-
-</div>
-
-<div class="table-box">
-
-<div class="box-title">
-<h3>Data Pendapatan</h3>
-<button onclick="exportExcel()" style="
-  background:#1d6f42;color:white;border:none;
-  border-radius:10px;padding:10px 20px;
-  font-size:13px;font-weight:700;cursor:pointer;
-  display:flex;align-items:center;gap:8px;
-  transition:.2s;font-family:'Poppins',sans-serif;"
-  onmouseover="this.style.background='#155734'"
-  onmouseout="this.style.background='#1d6f42'">
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
-    <line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 18 15 15"/>
-  </svg>
-  Export Excel
-</button>
-</div>
-
-<?php
-// Kumpulkan data recap ke array PHP untuk di-embed ke JS
-$recap_rows = [];
-mysqli_data_seek($q_recap, 0);
-while($r_tmp = mysqli_fetch_assoc($q_recap)) $recap_rows[] = $r_tmp;
-?>
-
-<table id="tabelRecap">
-
-<tr>
-<th>No</th>
-<th>ID Pemesanan</th>
-<th>Nama Pelanggan</th>
-<th>No. Telepon</th>
-<th>Plat Mobil</th>
-<th>Paket Layanan</th>
-<th>Tanggal</th>
-<th>Jam</th>
-<th>Total (Rp)</th>
-</tr>
-
-<?php foreach($recap_rows as $i => $row): ?>
-<tr>
-<td><?= $i+1 ?></td>
-<td><?= $row['id_pemesanan'] ?></td>
-<td><?= htmlspecialchars($row['nama_pelanggan']) ?></td>
-<td><?= htmlspecialchars($row['no_telepon']) ?></td>
-<td><?= htmlspecialchars(strtoupper($row['plat_mobil'])) ?></td>
-<td><?= htmlspecialchars($row['nama_paket']) ?></td>
-<td><?= date('d-m-Y', strtotime($row['tanggal'])) ?></td>
-<td><?= htmlspecialchars($row['jam']) ?></td>
-<td>Rp <?= number_format($row['harga'],0,',','.') ?></td>
-</tr>
-<?php endforeach; ?>
-
-<?php if(empty($recap_rows)): ?>
-<tr><td colspan="9" style="text-align:center;color:#9ca3af;padding:24px;">Tidak ada data untuk filter ini.</td></tr>
-<?php else: ?>
-<!-- Baris total -->
-<tr style="font-weight:700;background:#f0fdf4;">
-<td colspan="8" style="text-align:right;">TOTAL PENDAPATAN</td>
-<td>Rp <?= number_format($total_recap,0,',','.') ?></td>
-</tr>
-<?php endif; ?>
-
-</table>
-
-</div>
-
-<!-- SheetJS untuk export Excel -->
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<script>
-function exportExcel() {
-  <?php
-  // Label filter untuk nama file
-  $label_filter = '';
-  if(!empty($_GET['bulan']) && !empty($_GET['tahun'])){
-      $label_filter = date('F', mktime(0,0,0,(int)$_GET['bulan'],1)) . '_' . (int)$_GET['tahun'];
-  } else {
-      $label_filter = 'Semua';
-  }
-  ?>
-
-  const namaFile = 'Recap_Habibi_Garage_<?= $label_filter ?>.xlsx';
-
-  // Header informasi di atas tabel
-  const info = [
-    ['REKAP PENDAPATAN — HABIBI GARAGE'],
-    ['Periode', '<?= !empty($_GET['bulan']) && !empty($_GET['tahun']) ? date('F Y', mktime(0,0,0,(int)$_GET['bulan'],1,(int)$_GET['tahun'])) : "Semua Data" ?>'],
-    ['Tanggal Export', '<?= date('d/m/Y H:i') ?>'],
-    ['Total Pendapatan', 'Rp <?= number_format($total_recap, 0, ',', '.') ?>'],
-    [], // baris kosong
-    // Header kolom
-    ['No','ID Pemesanan','Nama Pelanggan','No. Telepon','Plat Mobil','Paket Layanan','Tanggal','Jam','Total (Rp)']
-  ];
-
-  // Data baris
-  const dataRows = <?php
-    $js_rows = [];
-    foreach($recap_rows as $i => $r){
-        $js_rows[] = [
-            $i+1,
-            $r['id_pemesanan'],
-            $r['nama_pelanggan'],
-            $r['no_telepon'],
-            strtoupper($r['plat_mobil']),
-            $r['nama_paket'],
-            date('d-m-Y', strtotime($r['tanggal'])),
-            $r['jam'],
-            (int)$r['harga']
-        ];
-    }
-    echo json_encode($js_rows);
-  ?>;
-
-  // Baris total
-  const totalRow = ['','','','','','','','TOTAL', <?= (int)$total_recap ?>];
-
-  const allRows = [...info, ...dataRows, [], totalRow];
-
-  const ws = XLSX.utils.aoa_to_sheet(allRows);
-
-  // Lebar kolom
-  ws['!cols'] = [
-    {wch:5},  // No
-    {wch:14}, // ID
-    {wch:22}, // Nama
-    {wch:16}, // Telepon
-    {wch:12}, // Plat
-    {wch:22}, // Paket
-    {wch:12}, // Tanggal
-    {wch:18}, // Jam
-    {wch:16}, // Harga
-  ];
-
-  // Format angka kolom harga (kolom I = index 8, mulai baris data ke-7)
-  const dataStart = info.length + 1; // baris pertama data (0-indexed)
-  for(let r = dataStart; r < dataStart + dataRows.length; r++){
-    const cell = XLSX.utils.encode_cell({r, c: 8});
-    if(ws[cell]) {
-      ws[cell].t = 'n';
-      ws[cell].z = '#,##0';
-    }
-  }
-  // Format total
-  const totalCell = XLSX.utils.encode_cell({r: dataStart + dataRows.length + 1, c: 8});
-  if(ws[totalCell]){ ws[totalCell].t = 'n'; ws[totalCell].z = '#,##0'; }
-
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Rekap Pendapatan');
-  XLSX.writeFile(wb, namaFile);
-}
-</script>
-
-<?php endif; ?>
-
-
-<!-- =========================================================
-WALK-IN (PELANGGAN DATANG LANGSUNG)
-========================================================= -->
-
-<?php if($page == 'walkin'): ?>
-
-<?php
-// Ambil slot jam yang sudah terpakai hari ini
-$slot_walkin_booked = [];
-$q_slot_walkin = mysqli_query($conn,"SELECT jam FROM pemesanan WHERE tanggal='".date('Y-m-d')."'");
-while($rs = mysqli_fetch_assoc($q_slot_walkin)) $slot_walkin_booked[] = $rs['jam'];
-
-$semua_slot_walkin = [
-    '08:00 - 09:00','09:00 - 10:00','10:00 - 11:00','11:00 - 12:00',
-    '13:00 - 14:00','14:00 - 15:00','15:00 - 16:00'
-];
-
-// Walk-in hari ini
-$q_walkin_today = mysqli_query($conn,"
-    SELECT p.*, pl.nama_paket, pl.harga
-    FROM pemesanan p
-    JOIN paket_layanan pl ON p.id_paket = pl.id_paket
-    WHERE p.tanggal = CURDATE() AND p.status = 'lunas'
-    ORDER BY p.created_at DESC
-");
-?>
-
-<div style="margin-bottom:24px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
-  <div>
-    <h2 style="font-size:20px;font-weight:700;color:#0f1b2d;">Pelanggan Walk-In</h2>
-    <p style="color:#777;font-size:14px;">Tambahkan pelanggan yang datang langsung ke bengkel. Mereka bisa melacak progres cuci di halaman profil.</p>
-  </div>
-</div>
-
-<?php if(isset($_GET['sukses']) && is_numeric($_GET['sukses'])): ?>
-<div style="background:#dcfce7;border:1px solid #86efac;border-radius:14px;padding:16px 20px;margin-bottom:24px;display:flex;align-items:center;gap:12px;">
-  <span style="font-size:22px;">✅</span>
-  <div>
-    <strong style="color:#15803d;">Pelanggan walk-in berhasil ditambahkan!</strong>
-    <div style="font-size:13px;color:#16a34a;margin-top:2px;">
-      ID Pemesanan: <strong>#<?= (int)$_GET['sukses'] ?></strong> — Status langsung <em>Lunas</em> & masuk antrian cuci.
-      <br>Pelanggan bisa lihat progres di <strong>profil.php</strong> dengan no. telepon & plat yang sama.
-    </div>
-  </div>
-</div>
-<?php endif; ?>
-
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:25px;align-items:start;">
-
-<!-- FORM TAMBAH WALK-IN -->
-<div style="background:white;padding:28px;border-radius:22px;box-shadow:0 8px 20px rgba(0,0,0,0.07);">
-  <h3 style="font-size:16px;font-weight:700;color:#0f1b2d;margin-bottom:20px;">
-    🚗 Tambah Pelanggan Walk-In
-  </h3>
-
-  <form method="POST" id="formWalkin" style="display:flex;flex-direction:column;gap:14px;">
-    <input type="hidden" name="tambah_walkin" value="1">
-    <input type="hidden" name="jam" id="walkinJam" required>
-
-    <div>
-      <label style="font-size:12px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px;">Nama Pelanggan</label>
-      <input type="text" name="nama_pelanggan" placeholder="Nama lengkap" required
-        style="width:100%;padding:12px 14px;border-radius:10px;border:1.5px solid #e5e7eb;font-size:14px;outline:none;font-family:inherit;">
-    </div>
-
-    <div>
-      <label style="font-size:12px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px;">No. Telepon</label>
-      <input type="text" name="no_telepon" placeholder="08xxxxxxxxxx" required
-        style="width:100%;padding:12px 14px;border-radius:10px;border:1.5px solid #e5e7eb;font-size:14px;outline:none;font-family:inherit;">
-    </div>
-
-    <div>
-      <label style="font-size:12px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px;">Plat Nomor Kendaraan</label>
-      <input type="text" name="plat_mobil" placeholder="Contoh: B 1234 XY" required
-        style="width:100%;padding:12px 14px;border-radius:10px;border:1.5px solid #e5e7eb;font-size:14px;outline:none;font-family:inherit;text-transform:uppercase;"
-        oninput="this.value=this.value.toUpperCase()">
-    </div>
-
-    <div>
-      <label style="font-size:12px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px;">Paket Layanan</label>
-      <select name="id_paket" required
-        style="width:100%;padding:12px 14px;border-radius:10px;border:1.5px solid #e5e7eb;font-size:14px;outline:none;font-family:inherit;background:white;">
-        <option value="">Pilih Paket</option>
-        <?php mysqli_data_seek($q_paket,0); while($p=mysqli_fetch_assoc($q_paket)): ?>
-        <option value="<?= $p['id_paket'] ?>"><?= htmlspecialchars($p['nama_paket']) ?> — Rp <?= number_format($p['harga'],0,',','.') ?></option>
-        <?php endwhile; ?>
-      </select>
-    </div>
-
-    <div>
-      <label style="font-size:12px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:8px;">Slot Jam Hari Ini</label>
-      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;" id="slotGrid">
-        <?php foreach($semua_slot_walkin as $slot):
-          $terpakai = in_array($slot, $slot_walkin_booked);
-        ?>
-        <button type="button"
-          class="slot-btn"
-          data-slot="<?= $slot ?>"
-          onclick="pilihSlotWalkin(this, '<?= $slot ?>')"
-          <?= $terpakai ? 'disabled' : '' ?>
-          style="padding:10px 8px;border-radius:10px;font-size:12px;font-weight:700;border:2px solid <?= $terpakai ? '#fecaca' : '#bae6fd' ?>;
-                 background:<?= $terpakai ? '#fee2e2' : '#e0f2fe' ?>;color:<?= $terpakai ? '#ef4444' : '#0f1b2d' ?>;
-                 cursor:<?= $terpakai ? 'not-allowed' : 'pointer' ?>;text-decoration:<?= $terpakai ? 'line-through' : 'none' ?>;
-                 transition:.15s;font-family:inherit;">
-          <?= $slot ?><?= $terpakai ? '<br><span style="font-size:10px;font-weight:400;">Terpakai</span>' : '' ?>
-        </button>
-        <?php endforeach; ?>
-      </div>
-      <div id="slotPilihInfo" style="display:none;margin-top:10px;background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:10px 14px;font-size:13px;color:#15803d;">
-        ✅ Slot dipilih: <strong id="slotLabel">-</strong>
-      </div>
-      <div id="slotWarning" style="display:none;margin-top:8px;background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:10px 14px;font-size:12px;color:#92400e;">
-        ⚠️ Pilih slot jam terlebih dahulu
-      </div>
-    </div>
-
-    <!-- Info status walk-in -->
-    <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:12px;padding:14px 16px;font-size:13px;color:#15803d;">
-      ✅ <strong>Walk-in = langsung Lunas.</strong> Booking tidak melalui proses pembayaran online. Admin bertanggung jawab atas konfirmasi pembayaran tunai.
-    </div>
-
-    <button type="submit" onclick="return validasiWalkin()"
-      style="background:#0f1b2d;color:white;border:none;border-radius:12px;padding:14px;font-size:14px;font-weight:700;cursor:pointer;transition:.2s;font-family:inherit;"
-      onmouseover="this.style.background='#1a2f4a'" onmouseout="this.style.background='#0f1b2d'">
-      + Tambahkan Pelanggan Walk-In
-    </button>
-  </form>
-</div>
-
-<!-- DAFTAR WALK-IN HARI INI -->
-<div style="background:white;padding:28px;border-radius:22px;box-shadow:0 8px 20px rgba(0,0,0,0.07);">
-  <h3 style="font-size:16px;font-weight:700;color:#0f1b2d;margin-bottom:6px;">
-    📋 Walk-In Hari Ini
-  </h3>
-  <p style="font-size:13px;color:#9ca3af;margin-bottom:20px;"><?= date('d F Y') ?></p>
-
-  <?php if(mysqli_num_rows($q_walkin_today) == 0): ?>
-  <div style="text-align:center;padding:40px 20px;color:#9ca3af;">
-    <div style="font-size:40px;margin-bottom:10px;">🚗</div>
-    <p style="font-size:14px;">Belum ada walk-in hari ini</p>
-  </div>
-  <?php endif; ?>
-
-  <div style="display:flex;flex-direction:column;gap:14px;">
-  <?php while($wi = mysqli_fetch_assoc($q_walkin_today)):
-    $sc = $wi['status_cuci'];
-    $step = $sc === 'belum_dicuci' ? 1 : ($sc === 'diproses' ? 2 : 3);
-    $badge_color = $sc === 'belum_dicuci' ? '#f59e0b' : ($sc === 'diproses' ? '#3b82f6' : '#22c55e');
-    $badge_label = $sc === 'belum_dicuci' ? 'Antrian' : ($sc === 'diproses' ? 'Dicuci' : 'Selesai');
-  ?>
-  <div style="background:#f8fafc;border-radius:14px;padding:16px 18px;border-left:4px solid <?= $badge_color ?>;">
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:10px;">
-      <div>
-        <div style="font-weight:700;font-size:14px;color:#0f1b2d;"><?= htmlspecialchars($wi['nama_pelanggan']) ?></div>
-        <div style="font-size:12px;color:#777;margin-top:2px;">
-          📞 <?= htmlspecialchars($wi['no_telepon']) ?> &nbsp;·&nbsp;
-          🚘 <strong><?= htmlspecialchars(strtoupper($wi['plat_mobil'])) ?></strong>
-        </div>
-        <div style="font-size:12px;color:#777;margin-top:2px;">
-          🕐 <?= htmlspecialchars($wi['jam']) ?> &nbsp;·&nbsp;
-          <?= htmlspecialchars($wi['nama_paket']) ?>
-        </div>
-      </div>
-      <span style="font-size:11px;font-weight:700;color:white;background:<?= $badge_color ?>;padding:4px 10px;border-radius:20px;white-space:nowrap;">
-        <?= $badge_label ?>
-      </span>
-    </div>
-
-    <!-- Progress bar mini -->
-    <div style="display:flex;gap:6px;align-items:center;">
-      <?php
-      $steps_wi = ['Antrian','Dicuci','Selesai'];
-      foreach($steps_wi as $i => $s_label):
-        $done = $step >= ($i+1);
-      ?>
-      <div style="flex:1;height:6px;border-radius:3px;background:<?= $done ? $badge_color : '#e5e7eb' ?>;transition:.3s;"></div>
-      <?php endforeach; ?>
-    </div>
-    <div style="font-size:11px;color:#9ca3af;margin-top:5px;">
-      Progress: Step <?= $step ?>/3 — <?= $badge_label ?>
-    </div>
-  </div>
-  <?php endwhile; ?>
-  </div>
-</div>
-
-</div><!-- /grid -->
-
-<script>
-function pilihSlotWalkin(btn, slot) {
-  // Reset semua
-  document.querySelectorAll('.slot-btn:not([disabled])').forEach(b => {
-    b.style.background = '#e0f2fe';
-    b.style.borderColor = '#bae6fd';
-    b.style.color = '#0f1b2d';
-  });
-  // Aktifkan yang dipilih
-  btn.style.background = '#0f1b2d';
-  btn.style.borderColor = '#0f1b2d';
-  btn.style.color = 'white';
-
-  document.getElementById('walkinJam').value = slot;
-  document.getElementById('slotLabel').textContent = slot;
-  document.getElementById('slotPilihInfo').style.display = 'block';
-  document.getElementById('slotWarning').style.display = 'none';
-}
-
-function validasiWalkin() {
-  if (!document.getElementById('walkinJam').value) {
-    document.getElementById('slotWarning').style.display = 'block';
-    return false;
-  }
-  return true;
-}
-</script>
-
-<?php endif; ?>
-
-
-<!-- =========================================================
-KONFIRMASI PEMBAYARAN
-========================================================= -->
-
-<?php if($page == 'konfirmasi'): ?>
-
-<?php
-$q_konfirmasi = mysqli_query($conn,"
-    SELECT p.*, pl.nama_paket, pl.harga
-    FROM pemesanan p
-    JOIN paket_layanan pl ON p.id_paket = pl.id_paket
-    WHERE p.status='pending' AND p.bukti_bayar IS NOT NULL AND p.bukti_bayar != ''
-    ORDER BY p.created_at ASC
-");
-
-// Query refund yang menunggu diproses
-$q_refund = mysqli_query($conn,"
-    SELECT p.*, pl.nama_paket, pl.harga
-    FROM pemesanan p
-    JOIN paket_layanan pl ON p.id_paket = pl.id_paket
-    WHERE p.status='dibatalkan'
-    AND p.refund_status='menunggu'
-    AND p.refund_nomor_rek IS NOT NULL
-    ORDER BY p.created_at ASC
-");
-$total_refund = mysqli_num_rows($q_refund);
-?>
-
-<div style="margin-bottom:24px;">
-<h2 style="font-size:20px;font-weight:700;color:#0f1b2d;">Konfirmasi Pembayaran</h2>
-<p style="color:#777;font-size:14px;">Verifikasi bukti transfer dari pelanggan sebelum booking dikonfirmasi.</p>
-</div>
-
-<?php if(mysqli_num_rows($q_konfirmasi) == 0): ?>
-<div style="background:white;border-radius:22px;padding:50px;text-align:center;box-shadow:0 8px 20px rgba(0,0,0,0.06);">
-  <div style="font-size:48px;margin-bottom:12px;">✅</div>
-  <h3 style="color:#0f1b2d;margin-bottom:8px;">Tidak ada pembayaran menunggu</h3>
-  <p style="color:#9ca3af;font-size:14px;">Semua pembayaran sudah dikonfirmasi.</p>
-</div>
-<?php endif; ?>
-
-<div style="display:grid;gap:20px;">
-<?php while($row = mysqli_fetch_assoc($q_konfirmasi)): ?>
-<div style="background:white;border-radius:22px;padding:28px;box-shadow:0 8px 20px rgba(0,0,0,0.07);display:grid;grid-template-columns:1fr auto;gap:24px;align-items:start;">
-
-  <!-- INFO + BUKTI -->
-  <div style="display:grid;grid-template-columns:220px 1fr;gap:20px;align-items:start;">
-
-    <!-- Bukti bayar (gambar dari Cloudinary) -->
-    <div>
-      <p style="font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">Bukti Transfer</p>
-      <a href="<?= htmlspecialchars($row['bukti_bayar']) ?>" target="_blank" title="Klik untuk perbesar">
-        <img
-          src="<?= htmlspecialchars($row['bukti_bayar']) ?>"
-          alt="Bukti Bayar"
-          style="width:100%;max-width:220px;border-radius:14px;border:2px solid #e5e7eb;object-fit:cover;cursor:zoom-in;transition:.2s;"
-          onmouseover="this.style.borderColor='#119cc2'"
-          onmouseout="this.style.borderColor='#e5e7eb'"
-        >
-      </a>
-      <p style="font-size:11px;color:#9ca3af;margin-top:6px;text-align:center;">Klik gambar untuk perbesar</p>
-    </div>
-
-    <!-- Detail transaksi -->
-    <div>
-      <p style="font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;">Detail Transaksi</p>
-
-      <table style="width:100%;font-size:13px;border-collapse:collapse;">
-        <tr><td style="color:#777;padding:5px 0;width:140px;">ID Pemesanan</td><td style="font-weight:600;color:#0f1b2d;">#<?= $row['id_pemesanan'] ?></td></tr>
-        <tr><td style="color:#777;padding:5px 0;">Nama Pelanggan</td><td style="font-weight:600;color:#0f1b2d;"><?= htmlspecialchars($row['nama_pelanggan']) ?></td></tr>
-        <tr><td style="color:#777;padding:5px 0;">No. Telepon</td><td style="color:#0f1b2d;"><?= htmlspecialchars($row['no_telepon']) ?></td></tr>
-        <tr><td style="color:#777;padding:5px 0;">Plat Mobil</td><td style="font-weight:600;color:#0f1b2d;text-transform:uppercase;"><?= htmlspecialchars($row['plat_mobil']) ?></td></tr>
-        <tr><td style="color:#777;padding:5px 0;">Paket</td><td style="color:#119cc2;font-weight:600;"><?= htmlspecialchars($row['nama_paket']) ?></td></tr>
-        <tr><td style="color:#777;padding:5px 0;">Tanggal Booking</td><td style="color:#0f1b2d;"><?= date('d M Y', strtotime($row['tanggal'])) ?></td></tr>
-        <tr><td style="color:#777;padding:5px 0;">Jam</td><td style="color:#0f1b2d;"><?= htmlspecialchars($row['jam']) ?></td></tr>
-        <tr>
-          <td style="color:#777;padding:5px 0;">Total Bayar</td>
-          <td style="font-size:18px;font-weight:700;color:#16a34a;">Rp <?= number_format($row['harga'], 0, ',', '.') ?></td>
-        </tr>
-      </table>
-
-      <div style="margin-top:14px;background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:10px 14px;font-size:12px;color:#92400e;">
-        ⏳ Menunggu konfirmasi sejak: <strong><?= date('d M Y H:i', strtotime($row['created_at'])) ?></strong>
+<div class="layout">
+
+<!-- =====================================================
+     SIDEBAR
+===================================================== -->
+<aside class="sidebar" id="sidebar">
+
+  <div class="sidebar-header">
+    <div class="sidebar-brand">
+      <div class="brand-icon">🚗</div>
+      <div class="brand-text">
+        <h2>Habibi Garage</h2>
+        <span>Admin Panel</span>
       </div>
     </div>
   </div>
 
-  <!-- TOMBOL AKSI -->
-  <div style="display:flex;flex-direction:column;gap:12px;min-width:160px;">
-    <!-- Konfirmasi -->
-    <form method="POST" onsubmit="return confirm('Konfirmasi pembayaran ini? Booking akan langsung aktif.')">
-      <input type="hidden" name="id_pemesanan" value="<?= $row['id_pemesanan'] ?>">
-      <input type="hidden" name="aksi_konfirmasi" value="konfirmasi">
-      <button type="submit" style="background:#16a34a;color:white;border:none;border-radius:14px;padding:14px 20px;font-size:14px;font-weight:700;width:100%;cursor:pointer;transition:.2s;"
-        onmouseover="this.style.background='#15803d'" onmouseout="this.style.background='#16a34a'">
-        ✅ Konfirmasi Lunas
-      </button>
-    </form>
-    <!-- Tolak -->
-    <form method="POST" onsubmit="return confirm('Tolak pembayaran ini? Status akan menjadi dibatalkan.')">
-      <input type="hidden" name="id_pemesanan" value="<?= $row['id_pemesanan'] ?>">
-      <input type="hidden" name="aksi_konfirmasi" value="tolak">
-      <button type="submit" style="background:#ef5350;color:white;border:none;border-radius:14px;padding:14px 20px;font-size:14px;font-weight:700;width:100%;cursor:pointer;transition:.2s;"
-        onmouseover="this.style.background='#dc2626'" onmouseout="this.style.background='#ef5350'">
-        ❌ Tolak Pembayaran
-      </button>
-    </form>
-    <!-- Preview full -->
-    <a href="<?= htmlspecialchars($row['bukti_bayar']) ?>" target="_blank"
-      style="display:block;text-align:center;background:#f1f5f9;color:#0f1b2d;border:none;border-radius:14px;padding:12px 20px;font-size:13px;font-weight:600;text-decoration:none;cursor:pointer;transition:.2s;"
-      onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='#f1f5f9'">
-      🔍 Lihat Bukti Fullscreen
+  <nav class="sidebar-nav">
+
+    <div class="nav-section-label">Menu Utama</div>
+
+    <a href="?page=dashboard" class="nav-item <?= $page=='dashboard'?'active':'' ?>">
+      <span class="nav-icon">📊</span>
+      Dashboard
+    </a>
+
+    <a href="?page=booking" class="nav-item <?= $page=='booking'?'active':'' ?>">
+      <span class="nav-icon">📅</span>
+      Booking
+    </a>
+
+    <a href="?page=walkin" class="nav-item <?= $page=='walkin'?'active':'' ?>">
+      <span class="nav-icon">🚗</span>
+      Walk-In
+    </a>
+
+    <a href="?page=konfirmasi" class="nav-item <?= $page=='konfirmasi'?'active':'' ?>">
+      <span class="nav-icon">✅</span>
+      Konfirmasi
+      <?php if($total_pending > 0): ?>
+      <span class="nav-badge"><?= $total_pending ?></span>
+      <?php endif; ?>
+    </a>
+
+    <div class="nav-section-label">Pengelolaan</div>
+
+    <a href="?page=menu" class="nav-item <?= $page=='menu'?'active':'' ?>">
+      <span class="nav-icon">🛠</span>
+      Menu &amp; Paket
+    </a>
+
+    <a href="?page=recap" class="nav-item <?= $page=='recap'?'active':'' ?>">
+      <span class="nav-icon">📈</span>
+      Rekap Pendapatan
+    </a>
+
+    <a href="?page=admin" class="nav-item <?= $page=='admin'?'active':'' ?>">
+      <span class="nav-icon">👤</span>
+      Manajemen Admin
+    </a>
+
+  </nav>
+
+  <div class="sidebar-footer">
+    <a href="?logout=true" class="logout-btn">
+      <span class="nav-icon">🚪</span>
+      Logout
     </a>
   </div>
 
-</div>
-<?php endwhile; ?>
-</div>
+</aside>
 
-<!-- ============================================================
-     SECTION: PENGEMBALIAN DANA MENUNGGU
-     ============================================================ -->
-<?php if($total_refund > 0): ?>
-<div style="margin-top:40px;">
-  <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
-    <h2 style="font-size:20px;font-weight:700;color:#0f1b2d;">💸 Pengembalian Dana</h2>
-    <span style="background:#ef4444;color:white;font-size:12px;font-weight:800;padding:3px 12px;border-radius:20px;">
-      <?= $total_refund ?> menunggu
-    </span>
-  </div>
-  <p style="color:#777;font-size:14px;margin-bottom:20px;">Transfer dana ke rekening pelanggan di bawah, lalu tandai sebagai selesai.</p>
+<!-- =====================================================
+     MAIN WRAP
+===================================================== -->
+<div class="main-wrap">
 
-  <div style="display:grid;gap:16px;">
-  <?php
-  // Reset pointer
-  mysqli_data_seek($q_refund, 0);
-  while($rr = mysqli_fetch_assoc($q_refund)):
-  ?>
-  <div style="background:white;border-radius:18px;padding:24px 28px;box-shadow:0 6px 20px rgba(0,0,0,0.07);
-              display:grid;grid-template-columns:1fr auto;gap:24px;align-items:center;
-              border-left:5px solid #ef4444;">
-
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px;">
-
+  <!-- TOPBAR -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <button class="sidebar-toggle" onclick="toggleSidebar()" aria-label="Toggle Sidebar">☰</button>
       <div>
-        <p style="font-size:11px;color:#9ca3af;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Pelanggan</p>
-        <p style="font-weight:800;font-size:15px;color:#0f1b2d;"><?= htmlspecialchars($rr['nama_pelanggan']) ?></p>
-        <p style="font-size:12px;color:#6b7280;"><?= htmlspecialchars($rr['no_telepon']) ?></p>
+        <div class="page-title">
+          <?php
+          $titles = [
+            'dashboard'   => 'Dashboard',
+            'booking'     => 'Manajemen Booking',
+            'walkin'      => 'Pelanggan Walk-In',
+            'konfirmasi'  => 'Konfirmasi Pembayaran',
+            'menu'        => 'Menu & Paket Layanan',
+            'recap'       => 'Rekap Pendapatan',
+            'admin'       => 'Manajemen Admin',
+          ];
+          echo $titles[$page] ?? 'Dashboard';
+          ?>
+        </div>
+        <div class="breadcrumb">Habibi Garage &rsaquo; <?= $titles[$page] ?? 'Dashboard' ?></div>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <div class="topbar-date"><?= date('l, d F Y') ?></div>
+      <div class="admin-chip">
+        <div class="admin-avatar">A</div>
+        Admin
+      </div>
+    </div>
+  </header>
+
+  <!-- CONTENT -->
+  <main class="content">
+
+    <?php if(!empty($_GET['wa_url'])): ?>
+    <!-- POPUP NOTIFIKASI WHATSAPP -->
+    <div id="waPopupOverlay" style="
+      position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9999;
+      display:flex;align-items:center;justify-content:center;
+      animation:fadeInOverlay .25s ease;
+    ">
+      <div style="
+        background:#fff;border-radius:20px;padding:36px 32px;max-width:420px;width:90%;
+        box-shadow:0 20px 60px rgba(0,0,0,0.25);text-align:center;
+        animation:slideUpPopup .3s ease;
+      ">
+        <!-- Icon -->
+        <div style="
+          width:72px;height:72px;border-radius:50%;
+          background:linear-gradient(135deg,#25d366,#128c7e);
+          display:flex;align-items:center;justify-content:center;
+          font-size:36px;margin:0 auto 20px;
+          box-shadow:0 8px 24px rgba(37,211,102,0.35);
+        ">💬</div>
+
+        <!-- Title -->
+        <h2 style="font-size:20px;font-weight:800;color:#1e293b;margin-bottom:8px;">
+          Cucian Selesai! ✅
+        </h2>
+        <p style="color:#64748b;font-size:14px;line-height:1.6;margin-bottom:24px;">
+          Status berhasil diperbarui ke <strong style="color:#22c55e;">Selesai</strong>.<br>
+          Kirim notifikasi WhatsApp kepada pelanggan sekarang?
+        </p>
+
+        <!-- Buttons -->
+        <div style="display:flex;gap:12px;flex-direction:column;">
+          <a
+            href="<?= htmlspecialchars(urldecode($_GET['wa_url'])) ?>"
+            target="_blank"
+            onclick="document.getElementById('waPopupOverlay').remove()"
+            style="
+              display:flex;align-items:center;justify-content:center;gap:10px;
+              background:linear-gradient(135deg,#25d366,#128c7e);
+              color:white;font-size:15px;font-weight:700;
+              padding:14px 24px;border-radius:12px;text-decoration:none;
+              box-shadow:0 4px 16px rgba(37,211,102,0.35);
+              transition:opacity .2s;
+            "
+            onmouseover="this.style.opacity='.9'"
+            onmouseout="this.style.opacity='1'"
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>
+            Kirim via WhatsApp
+          </a>
+          <button
+            onclick="document.getElementById('waPopupOverlay').remove()"
+            style="
+              background:#f1f5f9;color:#475569;font-size:14px;font-weight:600;
+              padding:12px 24px;border-radius:12px;border:none;cursor:pointer;
+              transition:background .2s;
+            "
+            onmouseover="this.style.background='#e2e8f0'"
+            onmouseout="this.style.background='#f1f5f9'"
+          >
+            Lewati
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <style>
+    @keyframes fadeInOverlay { from{opacity:0} to{opacity:1} }
+    @keyframes slideUpPopup  { from{opacity:0;transform:translateY(30px)} to{opacity:1;transform:translateY(0)} }
+    </style>
+    <?php endif; ?>
+
+    <!-- ================================================
+         DASHBOARD PAGE
+    ================================================ -->
+    <?php if($page == 'dashboard'): ?>
+
+    <div class="page-header">
+      <h1>Selamat datang, Admin! 👋</h1>
+      <p>Berikut ringkasan aktivitas Habibi Garage hari ini.</p>
+    </div>
+
+    <!-- Stat Cards -->
+    <div class="stat-grid">
+      <div class="stat-card blue">
+        <div class="stat-label">
+          <div class="stat-icon blue">📅</div>
+          Booking Hari Ini
+        </div>
+        <div class="stat-value"><?= $total_booking ?></div>
+        <div class="stat-sub">Total booking <?= date('d F Y') ?></div>
       </div>
 
-      <div>
-        <p style="font-size:11px;color:#9ca3af;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Paket Dibatalkan</p>
-        <p style="font-weight:700;color:#119cc2;font-size:14px;"><?= htmlspecialchars($rr['nama_paket']) ?></p>
-        <p style="font-size:12px;color:#6b7280;"><?= date('d M Y', strtotime($rr['tanggal'])) ?> · <?= $rr['jam'] ?></p>
+      <div class="stat-card green">
+        <div class="stat-label">
+          <div class="stat-icon green">✅</div>
+          Konfirmasi Pending
+        </div>
+        <div class="stat-value"><?= $total_pending ?></div>
+        <div class="stat-sub">Menunggu konfirmasi admin</div>
       </div>
 
-      <div>
-        <p style="font-size:11px;color:#9ca3af;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Nominal Refund</p>
-        <p style="font-weight:800;font-size:20px;color:#16a34a;">Rp <?= number_format($rr['harga'],0,',','.') ?></p>
+      <div class="stat-card orange">
+        <div class="stat-label">
+          <div class="stat-icon orange">💰</div>
+          Pendapatan Hari Ini
+        </div>
+        <div class="stat-value" style="font-size:20px;">Rp <?= number_format($income_today,0,',','.') ?></div>
+        <div class="stat-sub">Bulan ini: Rp <?= number_format($income_month,0,',','.') ?></div>
+      </div>
+    </div>
+
+    <!-- Grid: Booking List + Kalender -->
+    <div class="grid-2">
+
+      <!-- Booking Hari Ini -->
+      <div class="card">
+        <div class="card-head">
+          <h3>Booking Hari Ini</h3>
+          <span><?= date('d F Y') ?></span>
+        </div>
+        <div class="card-body">
+          <?php
+          $has_booking = false;
+          while($row=mysqli_fetch_assoc($q_booking_today)):
+            $has_booking = true;
+            $sc = $row['status_cuci'];
+            $btn_label = $sc === 'belum_dicuci' ? '▶ Mulai Proses'
+                       : ($sc === 'diproses'    ? '✔ Selesai Dicuci'
+                       :                         '✔ Sudah Selesai');
+            $btn_color = $sc === 'belum_dicuci' ? 'var(--accent)'
+                       : ($sc === 'diproses'    ? 'var(--success)'
+                       :                         '#9ca3af');
+            $btn_disabled = $sc === 'selesai' ? 'disabled' : '';
+            $badge_label  = $sc === 'belum_dicuci' ? 'Belum Dicuci'
+                          : ($sc === 'diproses'    ? 'Diproses'
+                          :                         'Selesai');
+            $badge_color  = $sc === 'belum_dicuci' ? 'var(--warning)'
+                          : ($sc === 'diproses'    ? '#3b82f6'
+                          :                         'var(--success)');
+          ?>
+          <div class="booking-item">
+            <div class="booking-item-top">
+              <div>
+                <div class="booking-name"><?= htmlspecialchars($row['nama_pelanggan']) ?></div>
+                <div class="booking-paket"><?= htmlspecialchars($row['nama_paket']) ?></div>
+              </div>
+              <div class="time-chip"><?= htmlspecialchars($row['jam']) ?></div>
+            </div>
+            <div class="status-badge" style="background:<?= $badge_color ?>;"><?= $badge_label ?></div>
+            <form method="POST" style="margin:0;">
+              <input type="hidden" name="id_pemesanan" value="<?= $row['id_pemesanan'] ?>">
+              <button type="submit" name="next_status" <?= $btn_disabled ?>
+                class="progress-btn"
+                style="background:<?= $btn_color ?>;color:white;<?= $sc==='selesai'?'opacity:.5;cursor:not-allowed;':'' ?>">
+                <?= $btn_label ?>
+              </button>
+            </form>
+          </div>
+          <?php endwhile; ?>
+          <?php if(!$has_booking): ?>
+          <div class="empty-state" style="padding:30px 0;">
+            <div class="empty-icon">📭</div>
+            <p>Belum ada booking hari ini.</p>
+          </div>
+          <?php endif; ?>
+        </div>
       </div>
 
-      <div style="background:#fff7ed;border-radius:12px;padding:14px 16px;border:1px solid #fed7aa;">
-        <p style="font-size:11px;color:#92400e;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">Transfer ke</p>
-        <p style="font-weight:800;font-size:15px;color:#0f1b2d;"><?= htmlspecialchars($rr['refund_bank'] ?? '-') ?></p>
-        <p style="font-size:16px;font-weight:800;color:#0f1b2d;letter-spacing:1px;margin:4px 0;"><?= htmlspecialchars($rr['refund_nomor_rek'] ?? '-') ?></p>
-        <p style="font-size:12px;color:#6b7280;">a/n <?= htmlspecialchars($rr['refund_nama_rek'] ?? '-') ?></p>
+      <!-- Kalender -->
+      <div class="card">
+        <div class="card-head">
+          <h3>Kalender Booking</h3>
+        </div>
+        <div class="card-body">
+          <table class="calendar" style="width:100%;border-spacing:6px;border-collapse:separate;">
+            <tr>
+              <?php foreach(['Min','Sen','Sel','Rab','Kam','Jum','Sab'] as $h): ?>
+              <th style="color:<?= $h==='Jum'?'var(--danger)':'var(--muted)' ?>;font-size:11px;padding:6px;text-align:center;background:none;"><?= $h ?></th>
+              <?php endforeach; ?>
+            </tr>
+            <?php
+            $tahun_kal  = (int)date('Y');
+            $bulan_kal  = (int)date('m');
+            $hari_ini_n = (int)date('j');
+            $total_hari = (int)date('t');
+            $awal_dow   = (int)date('w', mktime(0,0,0,$bulan_kal,1,$tahun_kal));
+
+            $tgl_booking = [];
+            $q_kal = mysqli_query($conn,"SELECT DISTINCT DAY(tanggal) as hari FROM pemesanan WHERE MONTH(tanggal)='$bulan_kal' AND YEAR(tanggal)='$tahun_kal'");
+            while($rk = mysqli_fetch_assoc($q_kal)) $tgl_booking[] = (int)$rk['hari'];
+
+            $col = 0;
+            echo '<tr>';
+            for($i=0;$i<$awal_dow;$i++){ echo '<td style="background:transparent;border:none;"></td>'; $col++; }
+            for($d=1;$d<=$total_hari;$d++){
+              if($col==7){ echo '</tr><tr>'; $col=0; }
+              $dow_hari = ($awal_dow + $d - 1) % 7;
+              $is_past  = $d < $hari_ini_n;
+              $is_today = $d === $hari_ini_n;
+              $is_jumat = $dow_hari === 5;
+              $ada_booking = in_array($d, $tgl_booking);
+              $tgl_str = date('Y-m-d', mktime(0,0,0,$bulan_kal,$d,$tahun_kal));
+              $style = '';
+              $extra = '';
+              if($is_today){
+                $style = 'background:var(--navy);color:white;font-weight:700;';
+                $extra = 'data-today="1"';
+              } elseif($is_past || $is_jumat){
+                $style = 'background:#e5e7eb;color:#9ca3af;cursor:not-allowed;opacity:.6;';
+                $extra = 'data-disabled="1"';
+              } elseif($ada_booking){
+                $style = 'background:#dbeafe;color:#1e40af;font-weight:600;';
+              } else {
+                $style = 'background:var(--bg);';
+              }
+              $dot = $ada_booking && !$is_past && !$is_jumat
+                   ? '<span style="display:block;width:5px;height:5px;border-radius:50%;background:var(--accent);margin:2px auto 0;"></span>' : '';
+              echo "<td style='border-radius:8px;text-align:center;padding:10px 5px;font-size:12px;cursor:pointer;transition:.2s;{$style}' {$extra} data-tgl='{$tgl_str}' onclick='klikKalender(this)'>{$d}{$dot}</td>";
+              $col++;
+            }
+            while($col<7){ echo '<td style="background:transparent;border:none;"></td>'; $col++; }
+            echo '</tr>';
+            ?>
+          </table>
+
+          <div id="panelKalender" style="display:none;margin-top:14px;background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:16px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+              <h4 id="panelTanggalLabel" style="font-size:13px;font-weight:700;color:var(--text);"></h4>
+              <button onclick="document.getElementById('panelKalender').style.display='none'" style="background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;line-height:1;">&#215;</button>
+            </div>
+            <div id="panelKalenderIsi">
+              <p style="color:var(--muted);font-size:13px;">Klik tanggal untuk melihat booking.</p>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div><!-- /grid-2 -->
+
+    <?php endif; ?>
+
+
+    <!-- ================================================
+         BOOKING PAGE
+    ================================================ -->
+    <?php if($page == 'booking'): ?>
+
+    <?php
+    $slot_booked_today = [];
+    $q_slot_today = mysqli_query($conn,"SELECT jam FROM pemesanan WHERE tanggal='".date('Y-m-d')."'");
+    while($rs = mysqli_fetch_assoc($q_slot_today)) $slot_booked_today[] = $rs['jam'];
+    ?>
+
+    <div class="page-header">
+      <h1>Tambah Booking</h1>
+      <p>Buat booking baru untuk pelanggan secara manual.</p>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:22px;align-items:start;">
+
+      <!-- Form -->
+      <div class="form-card">
+        <h3>Data Pelanggan</h3>
+
+        <form method="POST" id="formBookingAdmin">
+          <input type="hidden" name="tambah_pelanggan" value="1">
+
+          <div class="form-group">
+            <label class="form-label">Nama Pelanggan</label>
+            <input type="text" name="nama_pelanggan" class="form-control" placeholder="Nama lengkap" required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">No Telepon</label>
+            <input type="text" name="no_telepon" class="form-control" placeholder="08xxxxxxxxxx" required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Paket Layanan</label>
+            <select name="id_paket" class="form-control" required>
+              <option value="">Pilih Paket</option>
+              <?php mysqli_data_seek($q_paket,0); while($p=mysqli_fetch_assoc($q_paket)): ?>
+              <option value="<?= $p['id_paket'] ?>"><?= htmlspecialchars($p['nama_paket']) ?> — Rp <?= number_format($p['harga'],0,',','.') ?></option>
+              <?php endwhile; ?>
+            </select>
+          </div>
+
+          <input type="hidden" name="tanggal" id="inputTanggal" required>
+          <input type="hidden" name="jam" id="inputJam" required>
+
+          <div id="pilihanInfo" style="display:none;background:var(--accent-light);border:1px solid #bae6fd;border-radius:10px;padding:12px 14px;font-size:13px;color:#0369a1;margin-bottom:14px;">
+            <div>📅 <strong id="labelTanggal">-</strong></div>
+            <div style="margin-top:4px;">🕐 <strong id="labelJam">-</strong></div>
+          </div>
+          <div id="pilihanWarning" style="display:none;margin-bottom:14px;">
+            <div class="alert alert-warning">⚠️ Pilih tanggal dan jam dari kalender di sebelah kanan.</div>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-full" onclick="return validasiForm()">Tambah Booking</button>
+        </form>
+      </div>
+
+      <!-- Kalender Pilih Slot -->
+      <div class="form-card">
+        <h3>Pilih Tanggal &amp; Jam</h3>
+
+        <div class="calendar-nav">
+          <button class="cal-nav-btn" onclick="gantibulan(-1)">‹</button>
+          <span class="cal-month-label" id="labelBulanTahun"></span>
+          <button class="cal-nav-btn" onclick="gantibulan(1)">›</button>
+        </div>
+
+        <div class="calendar-header-row">
+          <?php foreach(['Min','Sen','Sel','Rab','Kam','Jum','Sab'] as $h): ?>
+          <div class="cal-day-label <?= $h==='Jum'?'friday':'' ?>"><?= $h ?></div>
+          <?php endforeach; ?>
+        </div>
+
+        <div id="gridKalender"></div>
+
+        <!-- Slot jam -->
+        <div style="border-top:1px solid var(--border);padding-top:14px;">
+          <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px;">
+            Slot Jam — <span id="labelTanggalSlot" style="color:var(--accent);">pilih tanggal dulu</span>
+          </div>
+          <div id="gridSlot" style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;">
+            <div style="grid-column:span 2;text-align:center;color:var(--muted);font-size:13px;padding:16px 0;">
+              Klik tanggal untuk melihat slot jam
+            </div>
+          </div>
+        </div>
+
+        <!-- Legenda -->
+        <div style="display:flex;gap:14px;margin-top:12px;flex-wrap:wrap;">
+          <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted);">
+            <span style="width:12px;height:12px;border-radius:3px;background:#e2f4ff;border:1px solid var(--accent);display:inline-block;"></span> Tersedia
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted);">
+            <span style="width:12px;height:12px;border-radius:3px;background:var(--navy);display:inline-block;"></span> Dipilih
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted);">
+            <span style="width:12px;height:12px;border-radius:3px;background:#fee2e2;border:1px solid var(--danger);display:inline-block;"></span> Penuh
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /grid -->
+
+    <script>
+    const SEMUA_SLOT = ['08:00 - 09:00','09:00 - 10:00','10:00 - 11:00','11:00 - 12:00','13:00 - 14:00','14:00 - 15:00','15:00 - 16:00'];
+    const BULAN_ADM = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+    let tglAktif = null, jamAktif = null;
+    let bulanView = new Date().getMonth(), tahunView = new Date().getFullYear();
+
+    function gantibulan(a){ bulanView+=a; if(bulanView<0){bulanView=11;tahunView--;} if(bulanView>11){bulanView=0;tahunView++;} renderKalender(); }
+
+    function renderKalender(){
+      document.getElementById('labelBulanTahun').textContent = BULAN_ADM[bulanView]+' '+tahunView;
+      const grid = document.getElementById('gridKalender');
+      const today = new Date(); today.setHours(0,0,0,0);
+      const awal = new Date(tahunView,bulanView,1).getDay();
+      const total = new Date(tahunView,bulanView+1,0).getDate();
+      let html = '';
+      for(let i=0;i<awal;i++) html+='<div></div>';
+      for(let d=1;d<=total;d++){
+        const tgl=new Date(tahunView,bulanView,d), dow=tgl.getDay();
+        const tglStr=tahunView+'-'+String(bulanView+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+        const isPast=tgl<today, isJumat=dow===5, isToday=tgl.getTime()===today.getTime(), isAktif=tglStr===tglAktif;
+        let bg='#f7f8fc',color='var(--text)',cursor='pointer',border='1px solid transparent',opacity='1';
+        if(isAktif){bg='var(--navy)';color='white';}
+        else if(isToday){bg='#e0f2fe';border='1px solid var(--accent)';}
+        else if(isPast||isJumat){bg='#e5e7eb';color='#9ca3af';cursor='not-allowed';opacity='.6';}
+        const disabled=(isPast||isJumat)?'disabled':'';
+        html+=`<div onclick="pilihTanggal('${tglStr}','${d} ${BULAN_ADM[bulanView]}')" ${disabled} style="text-align:center;padding:8px 2px;border-radius:8px;font-size:12px;font-weight:600;background:${bg};color:${color};cursor:${cursor};border:${border};opacity:${opacity};transition:.15s;">${d}</div>`;
+      }
+      grid.innerHTML = html;
+    }
+
+    function pilihTanggal(tglStr,labelStr){
+      tglAktif=tglStr; jamAktif=null;
+      document.getElementById('inputTanggal').value=tglStr;
+      document.getElementById('inputJam').value='';
+      document.getElementById('labelTanggalSlot').textContent=labelStr;
+      document.getElementById('pilihanInfo').style.display='none';
+      document.getElementById('labelTanggal').textContent=labelStr;
+      renderKalender(); muatSlot(tglStr);
+    }
+
+    function muatSlot(tglStr){
+      const grid=document.getElementById('gridSlot');
+      grid.innerHTML='<div style="grid-column:span 2;text-align:center;color:var(--muted);font-size:13px;padding:16px 0;">Memuat slot...</div>';
+      fetch('dashboard_admin.php?ajax_booking=1&tgl='+tglStr).then(r=>r.json()).then(data=>{
+        const terpesan=data.map(b=>b.jam);
+        grid.innerHTML=SEMUA_SLOT.map(slot=>{
+          const penuh=terpesan.includes(slot), dipilih=slot===jamAktif;
+          let bg=penuh?'#fee2e2':(dipilih?'var(--navy)':'#e2f4ff');
+          let color=penuh?'var(--danger)':(dipilih?'white':'var(--text)');
+          let border=penuh?'1px solid var(--danger)':(dipilih?'none':'1px solid var(--accent)');
+          let cursor=penuh?'not-allowed':'pointer';
+          let strike=penuh?'text-decoration:line-through;':'';
+          return `<div onclick="pilihJam('${slot}')" ${penuh?'disabled':''} style="padding:10px;border-radius:10px;text-align:center;font-size:12px;font-weight:700;background:${bg};color:${color};border:${border};cursor:${cursor};${strike}transition:.15s;">${slot}${penuh?'<br><span style="font-size:10px;font-weight:400;">Penuh</span>':''}</div>`;
+        }).join('');
+      }).catch(()=>{
+        grid.innerHTML='<div style="grid-column:span 2;color:var(--danger);font-size:13px;text-align:center;">Gagal memuat slot.</div>';
+      });
+    }
+
+    function pilihJam(slot){
+      jamAktif=slot;
+      document.getElementById('inputJam').value=slot;
+      document.getElementById('labelTanggal').textContent=document.getElementById('labelTanggalSlot').textContent;
+      document.getElementById('labelJam').textContent=slot;
+      document.getElementById('pilihanInfo').style.display='block';
+      document.getElementById('pilihanWarning').style.display='none';
+      muatSlot(tglAktif);
+    }
+
+    function validasiForm(){
+      if(!tglAktif||!jamAktif){ document.getElementById('pilihanWarning').style.display='block'; return false; }
+      return true;
+    }
+    renderKalender();
+    </script>
+
+    <?php endif; ?>
+
+
+    <!-- ================================================
+         MENU PAGE
+    ================================================ -->
+    <?php if($page == 'menu'): ?>
+
+    <div class="page-header">
+      <h1>Menu &amp; Paket Layanan</h1>
+      <p>Kelola daftar paket cuci kendaraan Habibi Garage.</p>
+    </div>
+
+    <div style="display:grid;grid-template-columns:380px 1fr;gap:22px;align-items:start;">
+
+      <!-- Form Tambah -->
+      <div class="form-card">
+        <h3>Tambah Paket Baru</h3>
+        <form method="POST">
+          <input type="hidden" name="aksi_menu" value="tambah">
+          <div class="form-group">
+            <label class="form-label">Nama Paket</label>
+            <input type="text" name="nama_paket" class="form-control" placeholder="Nama paket layanan" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Harga (Rp)</label>
+            <input type="number" name="harga" class="form-control" placeholder="Contoh: 50000" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Deskripsi</label>
+            <input type="text" name="deskripsi" class="form-control" placeholder="Deskripsi singkat" required>
+          </div>
+          <button type="submit" class="btn btn-primary btn-full">+ Tambah Paket</button>
+        </form>
+      </div>
+
+      <!-- Daftar Paket -->
+      <div>
+        <?php mysqli_data_seek($q_paket,0); while($paket=mysqli_fetch_assoc($q_paket)): ?>
+        <div class="menu-item">
+          <div class="menu-item-info">
+            <h4><?= htmlspecialchars($paket['nama_paket']) ?></h4>
+            <p>Rp <?= number_format($paket['harga'],0,',','.') ?> — <?= htmlspecialchars($paket['deskripsi']) ?></p>
+          </div>
+          <div class="action-row">
+            <button class="btn btn-accent btn-sm" onclick="toggleEdit(<?= $paket['id_paket'] ?>)">Edit</button>
+            <form method="POST" style="margin:0;">
+              <input type="hidden" name="aksi_menu" value="hapus">
+              <input type="hidden" name="id_paket" value="<?= $paket['id_paket'] ?>">
+              <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Hapus paket ini?')">Hapus</button>
+            </form>
+          </div>
+        </div>
+
+        <div id="edit<?= $paket['id_paket'] ?>" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:14px;margin-top:-4px;">
+          <form method="POST" style="display:flex;flex-direction:column;gap:10px;">
+            <input type="hidden" name="aksi_menu" value="edit">
+            <input type="hidden" name="id_paket" value="<?= $paket['id_paket'] ?>">
+            <input type="text" name="nama_paket" class="form-control" value="<?= htmlspecialchars($paket['nama_paket']) ?>">
+            <input type="number" name="harga" class="form-control" value="<?= $paket['harga'] ?>">
+            <input type="text" name="deskripsi" class="form-control" value="<?= htmlspecialchars($paket['deskripsi']) ?>">
+            <button type="submit" class="btn btn-primary">Simpan Perubahan</button>
+          </form>
+        </div>
+        <?php endwhile; ?>
       </div>
 
     </div>
 
-    <form method="POST" onsubmit="return confirm('Tandai refund ini sudah ditransfer?')">
-      <input type="hidden" name="id_pemesanan" value="<?= $rr['id_pemesanan'] ?>">
-      <button type="submit" name="selesai_refund"
-        style="background:#16a34a;color:white;border:none;border-radius:14px;
-               padding:14px 20px;font-size:13px;font-weight:800;cursor:pointer;
-               white-space:nowrap;transition:.2s;"
-        onmouseover="this.style.background='#15803d'"
-        onmouseout="this.style.background='#16a34a'">
-        ✅ Tandai Selesai
-      </button>
-    </form>
-
-  </div>
-  <?php endwhile; ?>
-  </div>
-</div>
-<?php endif; ?>
-
-<?php endif; ?>
+    <?php endif; ?>
 
 
-<!-- =========================================================
-ADMIN
-========================================================= -->
+    <!-- ================================================
+         RECAP PAGE
+    ================================================ -->
+    <?php if($page == 'recap'): ?>
 
-<?php if($page == 'admin'): ?>
+    <?php
+    $where = "WHERE p.status='lunas'";
+    if(!empty($_GET['bulan']) && !empty($_GET['tahun'])){
+      $bulan = (int)$_GET['bulan'];
+      $tahun = (int)$_GET['tahun'];
+      $where .= " AND MONTH(p.tanggal)='$bulan' AND YEAR(p.tanggal)='$tahun'";
+    }
+    $q_recap = mysqli_query($conn,"SELECT p.*,pl.nama_paket,pl.harga FROM pemesanan p JOIN paket_layanan pl ON p.id_paket=pl.id_paket $where ORDER BY p.tanggal DESC");
+    $q_total = mysqli_query($conn,"SELECT SUM(pl.harga) as total FROM pemesanan p JOIN paket_layanan pl ON p.id_paket=pl.id_paket $where");
+    $total_recap = mysqli_fetch_assoc($q_total)['total'] ?? 0;
+    ?>
 
-<div class="form-box">
+    <div class="page-header">
+      <h1>Rekap Pendapatan</h1>
+      <p>Laporan keuangan dan riwayat transaksi Habibi Garage.</p>
+    </div>
 
-<div class="box-title">
-<h3>Tambah Admin Baru</h3>
-</div>
+    <!-- Stat Cards Recap -->
+    <div class="stat-grid" style="margin-bottom:22px;">
+      <div class="stat-card blue">
+        <div class="stat-label"><div class="stat-icon blue">📅</div>Income Hari Ini</div>
+        <div class="stat-value" style="font-size:20px;">Rp <?= number_format($income_today,0,',','.') ?></div>
+        <div class="stat-sub">Pendapatan hari ini</div>
+      </div>
+      <div class="stat-card green">
+        <div class="stat-label"><div class="stat-icon green">📆</div>Income Bulan Ini</div>
+        <div class="stat-value" style="font-size:20px;">Rp <?= number_format($income_month,0,',','.') ?></div>
+        <div class="stat-sub">Pendapatan bulan sekarang</div>
+      </div>
+      <div class="stat-card orange">
+        <div class="stat-label"><div class="stat-icon orange">📊</div>Total Hasil Filter</div>
+        <div class="stat-value" style="font-size:20px;">Rp <?= number_format($total_recap,0,',','.') ?></div>
+        <div class="stat-sub">Total dari filter aktif</div>
+      </div>
+    </div>
 
-<form method="POST" action="tambah_admin.php">
+    <!-- Filter -->
+    <div class="form-card" style="margin-bottom:22px;">
+      <h3>Filter Rekap</h3>
+      <form method="GET" style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;">
+        <input type="hidden" name="page" value="recap">
+        <div class="form-group" style="margin:0;min-width:160px;">
+          <label class="form-label">Bulan</label>
+          <select name="bulan" class="form-control">
+            <option value="">Semua Bulan</option>
+            <?php for($i=1;$i<=12;$i++): ?>
+            <option value="<?= $i ?>" <?= (isset($_GET['bulan'])&&$_GET['bulan']==$i)?'selected':'' ?>><?= date('F',mktime(0,0,0,$i,1)) ?></option>
+            <?php endfor; ?>
+          </select>
+        </div>
+        <div class="form-group" style="margin:0;min-width:120px;">
+          <label class="form-label">Tahun</label>
+          <select name="tahun" class="form-control">
+            <option value="">Semua Tahun</option>
+            <?php for($y=date('Y');$y>=2023;$y--): ?>
+            <option value="<?= $y ?>" <?= (isset($_GET['tahun'])&&$_GET['tahun']==$y)?'selected':'' ?>><?= $y ?></option>
+            <?php endfor; ?>
+          </select>
+        </div>
+        <button type="submit" class="btn btn-primary" style="align-self:flex-end;">Cari</button>
+      </form>
+    </div>
 
-<input type="text"
-name="no_telepon"
-placeholder="No Telepon Admin"
-required>
+    <!-- Tabel Recap -->
+    <?php
+    $recap_rows = [];
+    mysqli_data_seek($q_recap,0);
+    while($r_tmp=mysqli_fetch_assoc($q_recap)) $recap_rows[]=$r_tmp;
+    ?>
+    <div class="table-wrap">
+      <div class="table-head">
+        <h3>Data Pendapatan</h3>
+        <button onclick="exportExcel()" class="btn btn-success btn-sm">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 18 15 15"/></svg>
+          Export Excel
+        </button>
+      </div>
+      <table id="tabelRecap">
+        <tr>
+          <th>No</th><th>ID</th><th>Nama Pelanggan</th><th>Telepon</th>
+          <th>Plat</th><th>Paket</th><th>Tanggal</th><th>Jam</th><th>Total (Rp)</th>
+        </tr>
+        <?php foreach($recap_rows as $i => $row): ?>
+        <tr>
+          <td><?= $i+1 ?></td>
+          <td>#<?= $row['id_pemesanan'] ?></td>
+          <td><?= htmlspecialchars($row['nama_pelanggan']) ?></td>
+          <td><?= htmlspecialchars($row['no_telepon']) ?></td>
+          <td><strong><?= htmlspecialchars(strtoupper($row['plat_mobil'])) ?></strong></td>
+          <td><?= htmlspecialchars($row['nama_paket']) ?></td>
+          <td><?= date('d-m-Y',strtotime($row['tanggal'])) ?></td>
+          <td><?= htmlspecialchars($row['jam']) ?></td>
+          <td>Rp <?= number_format($row['harga'],0,',','.') ?></td>
+        </tr>
+        <?php endforeach; ?>
+        <?php if(empty($recap_rows)): ?>
+        <tr><td colspan="9" style="text-align:center;color:var(--muted);padding:32px;">Tidak ada data untuk filter ini.</td></tr>
+        <?php else: ?>
+        <tr style="font-weight:800;background:#f0fdf4;">
+          <td colspan="8" style="text-align:right;color:var(--text);">TOTAL PENDAPATAN</td>
+          <td style="color:var(--success);">Rp <?= number_format($total_recap,0,',','.') ?></td>
+        </tr>
+        <?php endif; ?>
+      </table>
+    </div>
 
-<input type="email"
-name="email"
-placeholder="Email Admin"
-required>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script>
+    function exportExcel(){
+      <?php
+      $label_filter = '';
+      if(!empty($_GET['bulan'])&&!empty($_GET['tahun'])){
+        $label_filter = date('F',mktime(0,0,0,(int)$_GET['bulan'],1)).'_'.(int)$_GET['tahun'];
+      } else { $label_filter = 'Semua'; }
+      ?>
+      const namaFile = 'Recap_Habibi_Garage_<?= $label_filter ?>.xlsx';
+      const info = [
+        ['REKAP PENDAPATAN — HABIBI GARAGE'],
+        ['Periode','<?= !empty($_GET['bulan'])&&!empty($_GET['tahun'])?date('F Y',mktime(0,0,0,(int)$_GET['bulan'],1,(int)$_GET['tahun'])):"Semua Data" ?>'],
+        ['Tanggal Export','<?= date('d/m/Y H:i') ?>'],
+        ['Total Pendapatan','Rp <?= number_format($total_recap,0,',','.') ?>'],
+        [],
+        ['No','ID Pemesanan','Nama Pelanggan','No. Telepon','Plat Mobil','Paket Layanan','Tanggal','Jam','Total (Rp)']
+      ];
+      const dataRows = <?php
+        $js_rows=[];
+        foreach($recap_rows as $i=>$r){
+          $js_rows[]=[$i+1,$r['id_pemesanan'],$r['nama_pelanggan'],$r['no_telepon'],strtoupper($r['plat_mobil']),$r['nama_paket'],date('d-m-Y',strtotime($r['tanggal'])),$r['jam'],(int)$r['harga']];
+        }
+        echo json_encode($js_rows);
+      ?>;
+      const totalRow=['','','','','','','','TOTAL',<?= (int)$total_recap ?>];
+      const allRows=[...info,...dataRows,[],totalRow];
+      const ws=XLSX.utils.aoa_to_sheet(allRows);
+      ws['!cols']=[{wch:5},{wch:14},{wch:22},{wch:16},{wch:12},{wch:22},{wch:12},{wch:18},{wch:16}];
+      const wb=XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb,ws,'Rekap Pendapatan');
+      XLSX.writeFile(wb,namaFile);
+    }
+    </script>
 
-<input type="password"
-name="password"
-placeholder="Password"
-required>
+    <?php endif; ?>
 
-<button type="submit">
-Tambah Admin
-</button>
 
-</form>
+    <!-- ================================================
+         WALK-IN PAGE
+    ================================================ -->
+    <?php if($page == 'walkin'): ?>
 
-</div>
+    <?php
+    $slot_walkin_booked = [];
+    $q_slot_walkin = mysqli_query($conn,"SELECT jam FROM pemesanan WHERE tanggal='".date('Y-m-d')."'");
+    while($rs=mysqli_fetch_assoc($q_slot_walkin)) $slot_walkin_booked[]=$rs['jam'];
+    $semua_slot_walkin=['08:00 - 09:00','09:00 - 10:00','10:00 - 11:00','11:00 - 12:00','13:00 - 14:00','14:00 - 15:00','15:00 - 16:00'];
+    $q_walkin_today=mysqli_query($conn,"SELECT p.*,pl.nama_paket,pl.harga FROM pemesanan p JOIN paket_layanan pl ON p.id_paket=pl.id_paket WHERE p.tanggal=CURDATE() AND p.status='lunas' ORDER BY p.created_at DESC");
+    ?>
 
-<?php endif; ?>
+    <div class="page-header">
+      <h1>Pelanggan Walk-In</h1>
+      <p>Tambahkan pelanggan yang datang langsung ke bengkel.</p>
+    </div>
 
-</div>
+    <?php if(isset($_GET['sukses'])&&is_numeric($_GET['sukses'])): ?>
+    <div class="alert alert-success" style="margin-bottom:20px;">
+      ✅ <strong>Pelanggan walk-in berhasil ditambahkan!</strong> ID Pemesanan: <strong>#<?= (int)$_GET['sukses'] ?></strong> — Status langsung Lunas.
+    </div>
+    <?php endif; ?>
 
-</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:22px;align-items:start;">
 
+      <!-- Form Walk-In -->
+      <div class="form-card">
+        <h3>🚗 Tambah Pelanggan Walk-In</h3>
+        <form method="POST" id="formWalkin" style="display:flex;flex-direction:column;gap:0;">
+          <input type="hidden" name="tambah_walkin" value="1">
+          <input type="hidden" name="jam" id="walkinJam" required>
+
+          <div class="form-group">
+            <label class="form-label">Nama Pelanggan</label>
+            <input type="text" name="nama_pelanggan" class="form-control" placeholder="Nama lengkap" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">No. Telepon</label>
+            <input type="text" name="no_telepon" class="form-control" placeholder="08xxxxxxxxxx" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Plat Nomor Kendaraan</label>
+            <input type="text" name="plat_mobil" class="form-control" placeholder="B 1234 XY" required
+              oninput="this.value=this.value.toUpperCase()" style="text-transform:uppercase;">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Paket Layanan</label>
+            <select name="id_paket" class="form-control" required>
+              <option value="">Pilih Paket</option>
+              <?php mysqli_data_seek($q_paket,0); while($p=mysqli_fetch_assoc($q_paket)): ?>
+              <option value="<?= $p['id_paket'] ?>"><?= htmlspecialchars($p['nama_paket']) ?> — Rp <?= number_format($p['harga'],0,',','.') ?></option>
+              <?php endwhile; ?>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Slot Jam Hari Ini</label>
+            <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;" id="slotGrid">
+              <?php foreach($semua_slot_walkin as $slot):
+                $terpakai=in_array($slot,$slot_walkin_booked);
+              ?>
+              <button type="button" class="slot-btn" data-slot="<?= $slot ?>"
+                onclick="pilihSlotWalkin(this,'<?= $slot ?>')"
+                <?= $terpakai?'disabled':'' ?>
+                style="padding:10px 8px;border-radius:10px;font-size:12px;font-weight:700;
+                  border:2px solid <?= $terpakai?'#fecaca':'#bae6fd' ?>;
+                  background:<?= $terpakai?'#fee2e2':'#e0f2fe' ?>;
+                  color:<?= $terpakai?'var(--danger)':'var(--text)' ?>;
+                  cursor:<?= $terpakai?'not-allowed':'pointer' ?>;
+                  text-decoration:<?= $terpakai?'line-through':'none' ?>;
+                  font-family:inherit;transition:.15s;">
+                <?= $slot ?><?= $terpakai?'<br><span style="font-size:10px;font-weight:400;">Terpakai</span>':'' ?>
+              </button>
+              <?php endforeach; ?>
+            </div>
+            <div id="slotPilihInfo" style="display:none;margin-top:8px;background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:10px 14px;font-size:13px;color:#15803d;">
+              ✅ Slot dipilih: <strong id="slotLabel">-</strong>
+            </div>
+            <div id="slotWarning" style="display:none;margin-top:6px;">
+              <div class="alert alert-warning" style="margin:0;">⚠️ Pilih slot jam terlebih dahulu</div>
+            </div>
+          </div>
+
+          <div class="alert alert-success" style="margin-bottom:14px;">
+            ✅ <strong>Walk-in = langsung Lunas.</strong> Admin bertanggung jawab atas konfirmasi pembayaran tunai.
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-full" onclick="return validasiWalkin()">
+            + Tambahkan Pelanggan Walk-In
+          </button>
+        </form>
+      </div>
+
+      <!-- Daftar Walk-In Hari Ini -->
+      <div class="card">
+        <div class="card-head">
+          <h3>📋 Walk-In Hari Ini</h3>
+          <span><?= date('d F Y') ?></span>
+        </div>
+        <div class="card-body">
+          <?php if(mysqli_num_rows($q_walkin_today)==0): ?>
+          <div class="empty-state">
+            <div class="empty-icon">🚗</div>
+            <p>Belum ada walk-in hari ini</p>
+          </div>
+          <?php endif; ?>
+
+          <?php while($wi=mysqli_fetch_assoc($q_walkin_today)):
+            $sc=$wi['status_cuci'];
+            $step=$sc==='belum_dicuci'?1:($sc==='diproses'?2:3);
+            $badge_color=$sc==='belum_dicuci'?'var(--warning)':($sc==='diproses'?'#3b82f6':'var(--success)');
+            $badge_label=$sc==='belum_dicuci'?'Antrian':($sc==='diproses'?'Dicuci':'Selesai');
+          ?>
+          <div class="booking-item" style="border-left:4px solid <?= $badge_color ?>;">
+            <div class="booking-item-top">
+              <div>
+                <div class="booking-name"><?= htmlspecialchars($wi['nama_pelanggan']) ?></div>
+                <div class="booking-paket">📞 <?= htmlspecialchars($wi['no_telepon']) ?> · 🚘 <?= htmlspecialchars(strtoupper($wi['plat_mobil'])) ?></div>
+                <div class="booking-paket">🕐 <?= htmlspecialchars($wi['jam']) ?> · <?= htmlspecialchars($wi['nama_paket']) ?></div>
+              </div>
+              <div class="status-badge" style="background:<?= $badge_color ?>;"><?= $badge_label ?></div>
+            </div>
+            <div style="display:flex;gap:5px;margin-top:8px;">
+              <?php foreach(['Antrian','Dicuci','Selesai'] as $i=>$s_label): $done=$step>=($i+1); ?>
+              <div style="flex:1;height:5px;border-radius:3px;background:<?= $done?$badge_color:'var(--border)' ?>;"></div>
+              <?php endforeach; ?>
+            </div>
+            <div style="font-size:11px;color:var(--muted);margin-top:4px;">Step <?= $step ?>/3 — <?= $badge_label ?></div>
+          </div>
+          <?php endwhile; ?>
+        </div>
+      </div>
+
+    </div>
+
+    <script>
+    function pilihSlotWalkin(btn,slot){
+      document.querySelectorAll('.slot-btn:not([disabled])').forEach(b=>{
+        b.style.background='#e0f2fe';b.style.borderColor='#bae6fd';b.style.color='var(--text)';
+      });
+      btn.style.background='var(--navy)';btn.style.borderColor='var(--navy)';btn.style.color='white';
+      document.getElementById('walkinJam').value=slot;
+      document.getElementById('slotLabel').textContent=slot;
+      document.getElementById('slotPilihInfo').style.display='block';
+      document.getElementById('slotWarning').style.display='none';
+    }
+    function validasiWalkin(){
+      if(!document.getElementById('walkinJam').value){
+        document.getElementById('slotWarning').style.display='block'; return false;
+      }
+      return true;
+    }
+    </script>
+
+    <?php endif; ?>
+
+
+    <!-- ================================================
+         KONFIRMASI PAGE
+    ================================================ -->
+    <?php if($page == 'konfirmasi'): ?>
+
+    <?php
+    $q_konfirmasi = mysqli_query($conn,"
+        SELECT p.*,pl.nama_paket,pl.harga FROM pemesanan p
+        JOIN paket_layanan pl ON p.id_paket=pl.id_paket
+        WHERE p.status='pending' AND p.bukti_bayar IS NOT NULL AND p.bukti_bayar!=''
+        ORDER BY p.created_at ASC
+    ");
+    $q_refund = mysqli_query($conn,"
+        SELECT p.*,pl.nama_paket,pl.harga FROM pemesanan p
+        JOIN paket_layanan pl ON p.id_paket=pl.id_paket
+        WHERE p.status='dibatalkan' AND p.refund_status='menunggu' AND p.refund_nomor_rek IS NOT NULL
+        ORDER BY p.created_at ASC
+    ");
+    $total_refund = mysqli_num_rows($q_refund);
+    ?>
+
+    <div class="page-header">
+      <h1>Konfirmasi Pembayaran</h1>
+      <p>Verifikasi bukti transfer dari pelanggan sebelum booking dikonfirmasi.</p>
+    </div>
+
+    <?php if(mysqli_num_rows($q_konfirmasi)==0): ?>
+    <div class="card" style="margin-bottom:20px;">
+      <div class="card-body" style="padding:22px;">
+        <div class="empty-state">
+          <div class="empty-icon">✅</div>
+          <h3>Tidak ada pembayaran menunggu</h3>
+          <p>Semua pembayaran sudah dikonfirmasi.</p>
+        </div>
+      </div>
+    </div>
+    <?php endif; ?>
+
+    <?php while($row=mysqli_fetch_assoc($q_konfirmasi)): ?>
+    <div class="konfirmasi-card">
+      <div class="konfirmasi-inner">
+        <div>
+          <p style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">Bukti Transfer</p>
+          <a href="<?= htmlspecialchars($row['bukti_bayar']) ?>" target="_blank">
+            <img src="<?= htmlspecialchars($row['bukti_bayar']) ?>" alt="Bukti Bayar"
+              style="width:100%;max-width:200px;border-radius:12px;border:2px solid var(--border);object-fit:cover;cursor:zoom-in;transition:.2s;"
+              onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+          </a>
+          <p style="font-size:11px;color:var(--muted);margin-top:6px;text-align:center;">Klik untuk perbesar</p>
+        </div>
+        <div>
+          <p style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px;">Detail Transaksi</p>
+          <table style="width:100%;font-size:13px;border-collapse:collapse;">
+            <tr><td style="color:var(--muted);padding:5px 0;width:140px;">ID Pemesanan</td><td style="font-weight:600;">#<?= $row['id_pemesanan'] ?></td></tr>
+            <tr><td style="color:var(--muted);padding:5px 0;">Nama</td><td style="font-weight:600;"><?= htmlspecialchars($row['nama_pelanggan']) ?></td></tr>
+            <tr><td style="color:var(--muted);padding:5px 0;">Telepon</td><td><?= htmlspecialchars($row['no_telepon']) ?></td></tr>
+            <tr><td style="color:var(--muted);padding:5px 0;">Plat Mobil</td><td style="font-weight:600;text-transform:uppercase;"><?= htmlspecialchars($row['plat_mobil']) ?></td></tr>
+            <tr><td style="color:var(--muted);padding:5px 0;">Paket</td><td style="color:var(--accent);font-weight:600;"><?= htmlspecialchars($row['nama_paket']) ?></td></tr>
+            <tr><td style="color:var(--muted);padding:5px 0;">Tanggal</td><td><?= date('d M Y',strtotime($row['tanggal'])) ?> · <?= htmlspecialchars($row['jam']) ?></td></tr>
+            <tr><td style="color:var(--muted);padding:5px 0;">Total Bayar</td><td style="font-size:18px;font-weight:800;color:var(--success);">Rp <?= number_format($row['harga'],0,',','.') ?></td></tr>
+          </table>
+          <div class="alert alert-warning" style="margin-top:12px;">⏳ Menunggu konfirmasi sejak: <strong><?= date('d M Y H:i',strtotime($row['created_at'])) ?></strong></div>
+        </div>
+      </div>
+
+      <div class="konfirmasi-actions">
+        <form method="POST" onsubmit="return confirm('Konfirmasi pembayaran ini?')">
+          <input type="hidden" name="id_pemesanan" value="<?= $row['id_pemesanan'] ?>">
+          <input type="hidden" name="aksi_konfirmasi" value="konfirmasi">
+          <button type="submit" class="btn btn-success btn-full">✅ Konfirmasi Lunas</button>
+        </form>
+        <form method="POST" onsubmit="return confirm('Tolak pembayaran ini?')">
+          <input type="hidden" name="id_pemesanan" value="<?= $row['id_pemesanan'] ?>">
+          <input type="hidden" name="aksi_konfirmasi" value="tolak">
+          <button type="submit" class="btn btn-danger btn-full">❌ Tolak Pembayaran</button>
+        </form>
+        <a href="<?= htmlspecialchars($row['bukti_bayar']) ?>" target="_blank" class="btn btn-secondary btn-full" style="text-decoration:none;justify-content:center;">🔍 Lihat Fullscreen</a>
+      </div>
+    </div>
+    <?php endwhile; ?>
+
+    <!-- Refund -->
+    <?php if($total_refund > 0): ?>
+    <div style="margin-top:32px;">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px;">
+        <h2 style="font-size:18px;font-weight:800;color:var(--text);">💸 Pengembalian Dana</h2>
+        <span class="nav-badge" style="position:static;font-size:12px;padding:3px 10px;"><?= $total_refund ?> menunggu</span>
+      </div>
+      <div style="display:grid;gap:14px;">
+        <?php mysqli_data_seek($q_refund,0); while($rr=mysqli_fetch_assoc($q_refund)): ?>
+        <div style="background:var(--surface);border-radius:var(--radius);padding:22px 26px;box-shadow:var(--shadow);border:1px solid var(--border);border-left:5px solid var(--danger);display:grid;grid-template-columns:1fr auto;gap:24px;align-items:center;">
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:16px;">
+            <div>
+              <p style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;margin-bottom:4px;">Pelanggan</p>
+              <p style="font-weight:800;font-size:15px;"><?= htmlspecialchars($rr['nama_pelanggan']) ?></p>
+              <p style="font-size:12px;color:var(--muted);"><?= htmlspecialchars($rr['no_telepon']) ?></p>
+            </div>
+            <div>
+              <p style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;margin-bottom:4px;">Paket Dibatalkan</p>
+              <p style="font-weight:700;color:var(--accent);font-size:14px;"><?= htmlspecialchars($rr['nama_paket']) ?></p>
+              <p style="font-size:12px;color:var(--muted);"><?= date('d M Y',strtotime($rr['tanggal'])) ?></p>
+            </div>
+            <div>
+              <p style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;margin-bottom:4px;">Nominal Refund</p>
+              <p style="font-weight:800;font-size:20px;color:var(--success);">Rp <?= number_format($rr['harga'],0,',','.') ?></p>
+            </div>
+            <div style="background:#fff7ed;border-radius:12px;padding:14px 16px;border:1px solid #fed7aa;">
+              <p style="font-size:11px;color:#92400e;font-weight:700;text-transform:uppercase;margin-bottom:6px;">Transfer ke</p>
+              <p style="font-weight:800;font-size:15px;"><?= htmlspecialchars($rr['refund_bank']??'-') ?></p>
+              <p style="font-size:15px;font-weight:800;letter-spacing:1px;margin:3px 0;"><?= htmlspecialchars($rr['refund_nomor_rek']??'-') ?></p>
+              <p style="font-size:12px;color:var(--muted);">a/n <?= htmlspecialchars($rr['refund_nama_rek']??'-') ?></p>
+            </div>
+          </div>
+          <form method="POST" onsubmit="return confirm('Tandai refund ini sudah ditransfer?')">
+            <input type="hidden" name="id_pemesanan" value="<?= $rr['id_pemesanan'] ?>">
+            <button type="submit" name="selesai_refund" class="btn btn-success">✅ Tandai Selesai</button>
+          </form>
+        </div>
+        <?php endwhile; ?>
+      </div>
+    </div>
+    <?php endif; ?>
+
+    <?php endif; ?>
+
+
+    <!-- ================================================
+         ADMIN PAGE
+    ================================================ -->
+    <?php if($page == 'admin'): ?>
+
+    <div class="page-header">
+      <h1>Manajemen Admin</h1>
+      <p>Tambah akun admin baru untuk mengakses dashboard.</p>
+    </div>
+
+    <div style="max-width:480px;">
+      <div class="form-card">
+        <h3>Tambah Admin Baru</h3>
+        <form method="POST" action="tambah_admin.php">
+          <div class="form-group">
+            <label class="form-label">No. Telepon</label>
+            <input type="text" name="no_telepon" class="form-control" placeholder="No Telepon Admin" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Email</label>
+            <input type="email" name="email" class="form-control" placeholder="Email Admin" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Password</label>
+            <input type="password" name="password" class="form-control" placeholder="Password" required>
+          </div>
+          <button type="submit" class="btn btn-primary btn-full">Tambah Admin</button>
+        </form>
+      </div>
+    </div>
+
+    <?php endif; ?>
+
+  </main>
+
+</div><!-- /main-wrap -->
+
+</div><!-- /layout -->
+
+<!-- =====================================================
+     SCRIPTS
+===================================================== -->
 <script>
+// Sidebar toggle (mobile)
+function toggleSidebar(){
+  document.getElementById('sidebar').classList.toggle('open');
+}
 
+// Close sidebar on outside click (mobile)
+document.addEventListener('click', function(e){
+  const sb = document.getElementById('sidebar');
+  const toggle = document.querySelector('.sidebar-toggle');
+  if(sb.classList.contains('open') && !sb.contains(e.target) && !toggle.contains(e.target)){
+    sb.classList.remove('open');
+  }
+});
+
+// Toggle edit form (menu page)
 function toggleEdit(id){
-
-let x = document.getElementById("edit"+id);
-
-if(x.style.display=="none"){
-x.style.display="block";
-}else{
-x.style.display="none";
+  const x = document.getElementById('edit'+id);
+  x.style.display = x.style.display==='none' ? 'block' : 'none';
 }
 
-}
-
-</script>
-
-
-
-<script>
+// Kalender dashboard
 const BULAN_KAL = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
 
-function klikKalender(el) {
-  if (el.dataset.disabled) return;
+function klikKalender(el){
+  if(el.dataset.disabled) return;
   const tgl = el.dataset.tgl;
-  if (!tgl) return;
+  if(!tgl) return;
 
-  // Reset highlight semua cell
-  document.querySelectorAll('.calendar td[data-tgl]').forEach(t => {
-    if (t.dataset.today) { t.style.background='#0f1b2d'; t.style.color='white'; return; }
-    if (t.dataset.disabled) { t.style.background='#e5e7eb'; t.style.color='#9ca3af'; return; }
-    t.style.background = '#f7f8fc';
-    t.style.color = '';
+  document.querySelectorAll('.calendar td[data-tgl]').forEach(t=>{
+    if(t.dataset.today){ t.style.background='var(--navy)'; t.style.color='white'; return; }
+    if(t.dataset.disabled){ t.style.background='#e5e7eb'; t.style.color='#9ca3af'; return; }
+    t.style.background='var(--bg)'; t.style.color='';
   });
-  if (!el.dataset.today) { el.style.background = '#119cc2'; el.style.color = 'white'; }
+  if(!el.dataset.today){ el.style.background='var(--accent)'; el.style.color='white'; }
 
-  const panel = document.getElementById('panelKalender');
-  const label = document.getElementById('panelTanggalLabel');
-  const isi   = document.getElementById('panelKalenderIsi');
+  const panel=document.getElementById('panelKalender');
+  const label=document.getElementById('panelTanggalLabel');
+  const isi=document.getElementById('panelKalenderIsi');
+  const parts=tgl.split('-');
+  label.textContent='Booking '+parseInt(parts[2])+' '+BULAN_KAL[parseInt(parts[1])-1]+' '+parts[0];
+  isi.innerHTML='<p style="color:var(--muted);font-size:13px;">Memuat...</p>';
+  panel.style.display='block';
 
-  const parts = tgl.split('-');
-  label.textContent = 'Booking ' + parseInt(parts[2]) + ' ' + BULAN_KAL[parseInt(parts[1])-1] + ' ' + parts[0];
-  isi.innerHTML = '<p style="color:#9ca3af;font-size:13px;">Memuat...</p>';
-  panel.style.display = 'block';
-
-  fetch('dashboard_admin.php?ajax_booking=1&tgl=' + tgl)
-    .then(r => r.json())
-    .then(data => {
-      if (!data.length) {
-        isi.innerHTML = '<p style="color:#9ca3af;font-size:13px;">Tidak ada booking pada tanggal ini.</p>';
-        return;
-      }
-      const statusColor = { belum_dicuci:'#f59e0b', diproses:'#3b82f6', selesai:'#22c55e' };
-      const statusLabel = { belum_dicuci:'Belum Dicuci', diproses:'Diproses', selesai:'Selesai' };
-      isi.innerHTML = data.map(b => `
-        <div style="background:white;border-radius:10px;padding:12px 14px;margin-bottom:10px;border:1px solid #e0f2fe;">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-            <span style="font-weight:600;color:#0f1b2d;">${b.nama_pelanggan}</span>
-            <span style="font-size:11px;font-weight:600;color:white;background:${statusColor[b.status_cuci]||'#9ca3af'};padding:2px 8px;border-radius:12px;">
-              ${statusLabel[b.status_cuci]||b.status_cuci}
-            </span>
-          </div>
-          <div style="font-size:12px;color:#555;">${b.nama_paket} &middot; <strong>${b.jam}</strong></div>
-          <div style="font-size:11px;color:#9ca3af;margin-top:4px;">Plat: ${b.plat_mobil}</div>
+  fetch('dashboard_admin.php?ajax_booking=1&tgl='+tgl).then(r=>r.json()).then(data=>{
+    if(!data.length){ isi.innerHTML='<p style="color:var(--muted);font-size:13px;">Tidak ada booking pada tanggal ini.</p>'; return; }
+    const statusColor={belum_dicuci:'var(--warning)',diproses:'#3b82f6',selesai:'var(--success)'};
+    const statusLabel={belum_dicuci:'Belum Dicuci',diproses:'Diproses',selesai:'Selesai'};
+    isi.innerHTML=data.map(b=>`
+      <div style="background:white;border-radius:10px;padding:11px 14px;margin-bottom:8px;border:1px solid var(--border);">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+          <span style="font-weight:700;color:var(--text);font-size:13px;">${b.nama_pelanggan}</span>
+          <span style="font-size:11px;font-weight:700;color:white;background:${statusColor[b.status_cuci]||'#9ca3af'};padding:2px 8px;border-radius:12px;">${statusLabel[b.status_cuci]||b.status_cuci}</span>
         </div>
-      `).join('');
-    })
-    .catch(() => {
-      isi.innerHTML = '<p style="color:#ef5350;font-size:13px;">Gagal memuat data.</p>';
-    });
+        <div style="font-size:12px;color:var(--muted);">${b.nama_paket} · <strong>${b.jam}</strong></div>
+        <div style="font-size:11px;color:var(--muted);margin-top:3px;">Plat: ${b.plat_mobil||'-'}</div>
+      </div>
+    `).join('');
+  }).catch(()=>{ isi.innerHTML='<p style="color:var(--danger);font-size:13px;">Gagal memuat data.</p>'; });
 }
 </script>
 
