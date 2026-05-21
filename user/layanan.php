@@ -187,17 +187,11 @@ function getDetailLayanan($nama_paket, $harga) {
 
     /* ── HERO BANNER ── */
     .hero-banner {
-      background: linear-gradient(135deg, #0f1b2d 0%, #1a3050 60%, #0d2540 100%);
+      background: #1a3050;
       padding: 64px 48px 56px;
       text-align: center;
       position: relative;
       overflow: hidden;
-    }
-    .hero-banner::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: radial-gradient(ellipse at 70% 50%, rgba(232,160,32,.12) 0%, transparent 70%);
     }
     .hero-banner h1 {
       font-family: 'Barlow Condensed', sans-serif;

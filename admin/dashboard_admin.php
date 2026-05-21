@@ -273,26 +273,18 @@ html, body {
 ==================================================== */
 .sidebar {
   width: var(--sidebar-w);
-  background: var(--navy);
+  background: #0f1929;
   position: fixed;
-  top: 0; left: 0;
+  top: 0;
+  left: 0;
   height: 100vh;
   display: flex;
   flex-direction: column;
   z-index: 100;
   overflow: hidden;
-  transition: width 0.3s ease;
 }
 
 /* Subtle texture */
-.sidebar::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: radial-gradient(ellipse at top left, rgba(17,156,194,0.12) 0%, transparent 60%);
-  pointer-events: none;
-}
-
 .sidebar-header {
   padding: 28px 22px 24px;
   border-bottom: 1px solid rgba(255,255,255,0.07);
@@ -306,8 +298,7 @@ html, body {
 }
 
 .brand-icon {
-  width: 40px; height: 40px;
-  background: linear-gradient(135deg, var(--accent), #0e87a9);
+  width: 70px; height: 40px;
   border-radius: 10px;
   display: flex; align-items: center; justify-content: center;
   font-size: 18px;
@@ -338,6 +329,12 @@ html, body {
   scrollbar-width: none;
 }
 .sidebar-nav::-webkit-scrollbar { display: none; }
+
+.brand-icon img{
+    width: 45px;
+    height: 45px;
+    object-fit: contain;
+}
 
 .nav-section-label {
   color: rgba(148,163,184,0.5);
@@ -1130,7 +1127,9 @@ tr:hover td { background: #fafbfc; }
 
   <div class="sidebar-header">
     <div class="sidebar-brand">
-      <div class="brand-icon">🚗</div>
+      <div class="brand-icon">
+    <img src="../img/logo.png" alt="Logo Habibi Garage">
+      </div>
       <div class="brand-text">
         <h2>Habibi Garage</h2>
         <span>Admin Panel</span>
@@ -2108,11 +2107,12 @@ tr:hover td { background: #fafbfc; }
           <input type="hidden" name="aksi_konfirmasi" value="konfirmasi">
           <button type="submit" class="btn btn-success btn-full">✅ Konfirmasi Lunas</button>
         </form>
-        <form method="POST" onsubmit="return confirm('Tolak pembayaran ini?')">
-          <input type="hidden" name="id_pemesanan" value="<?= $row['id_pemesanan'] ?>">
-          <input type="hidden" name="aksi_konfirmasi" value="tolak">
-          <button type="submit" class="btn btn-danger btn-full">❌ Tolak Pembayaran</button>
-        </form>
+        <div>
+          <button type="button" class="btn btn-danger btn-full"
+            onclick="bukaModalTolak(<?= $row['id_pemesanan'] ?>, '<?= htmlspecialchars(addslashes($row['nama_pelanggan'])) ?>', '<?= number_format($row['harga'],0,'.','.') ?>', <?= !empty($row['refund_nomor_rek']) ? 'true' : 'false' ?>, '<?= htmlspecialchars(addslashes($row['refund_bank'] ?? '')) ?>', '<?= htmlspecialchars(addslashes($row['refund_nomor_rek'] ?? '')) ?>', '<?= htmlspecialchars(addslashes($row['refund_nama_rek'] ?? '')) ?>')">
+            &#x274C; Tolak Pembayaran
+          </button>
+        </div>
         <a href="<?= htmlspecialchars($row['bukti_bayar']) ?>" target="_blank" class="btn btn-secondary btn-full" style="text-decoration:none;justify-content:center;">🔍 Lihat Fullscreen</a>
       </div>
     </div>
@@ -2265,6 +2265,175 @@ function klikKalender(el){
     `).join('');
   }).catch(()=>{ isi.innerHTML='<p style="color:var(--danger);font-size:13px;">Gagal memuat data.</p>'; });
 }
+</script>
+
+
+<!-- ============================================================
+     MODAL TOLAK PEMBAYARAN + OPSI REFUND (ADMIN)
+     ============================================================ -->
+<div id="overlayTolakAdmin" onclick="tutupModalTolak()"
+  style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:1998;backdrop-filter:blur(3px);"></div>
+
+<div id="modalTolakAdmin"
+  style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+         z-index:1999;width:94%;max-width:480px;background:#fff;border-radius:16px;
+         box-shadow:0 24px 64px rgba(0,0,0,0.22);overflow:hidden;">
+
+  <!-- Header -->
+  <div style="background:#1a2236;padding:20px 24px 16px;position:relative;">
+    <div style="font-size:22px;margin-bottom:6px;">&#x274C;</div>
+    <h3 style="color:#fff;font-size:16px;font-weight:800;margin:0;">Tolak Pembayaran</h3>
+    <p style="color:rgba(255,255,255,.55);font-size:12px;margin-top:4px;" id="modalTolakNama"></p>
+    <button onclick="tutupModalTolak()"
+      style="position:absolute;top:16px;right:16px;background:rgba(255,255,255,.1);
+             border:none;color:#fff;width:28px;height:28px;border-radius:50%;
+             font-size:16px;cursor:pointer;line-height:1;">&#x2715;</button>
+  </div>
+
+  <form method="POST" id="formTolakAdmin" style="padding:20px 24px 24px;">
+    <input type="hidden" name="id_pemesanan" id="tolakIdPemesanan">
+    <input type="hidden" name="aksi_konfirmasi" value="tolak">
+
+    <!-- Pilihan refund -->
+    <div style="margin-bottom:16px;">
+      <label style="display:flex;align-items:flex-start;gap:12px;cursor:pointer;background:#fef2f2;border:1.5px solid #fecaca;border-radius:10px;padding:14px 16px;">
+        <input type="checkbox" name="aktifkan_refund" id="chkRefund" onchange="toggleRefundAdmin()"
+          style="margin-top:2px;accent-color:#ef4444;width:16px;height:16px;flex-shrink:0;">
+        <div>
+          <div style="font-size:13px;font-weight:800;color:#b91c1c;">Proses Pengembalian Dana (Refund)</div>
+          <div style="font-size:12px;color:#ef4444;margin-top:2px;line-height:1.4;">
+            Centang ini jika pelanggan sudah membayar dan berhak mendapat refund.
+            Admin wajib transfer ke rekening pelanggan.
+          </div>
+        </div>
+      </label>
+    </div>
+
+    <!-- Info rekening dari user -->
+    <div id="refundAdminBlock" style="display:none;">
+      <div id="infoRekUser" style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:14px 16px;margin-bottom:14px;font-size:13px;display:none;">
+        <div style="font-size:11px;font-weight:800;color:#15803d;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">&#x1F4CB; Rekening dari Pelanggan</div>
+        <div id="infoRekContent" style="color:#166534;line-height:1.8;"></div>
+        <div style="font-size:11px;color:#15803d;margin-top:8px;">Kosongkan kolom di bawah jika ingin menggunakan rekening ini.</div>
+      </div>
+
+      <div style="font-size:12px;font-weight:800;color:#374151;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;">
+        Atau isi / koreksi rekening refund:
+      </div>
+
+      <div style="margin-bottom:10px;">
+        <label style="display:block;font-size:11px;font-weight:700;color:#374151;margin-bottom:5px;">Nama Pemilik Rekening</label>
+        <input type="text" name="manual_refund_nama" id="manualRefundNama" placeholder="Contoh: Budi Santoso"
+          style="width:100%;padding:9px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;outline:none;font-family:inherit;">
+      </div>
+      <div style="margin-bottom:10px;">
+        <label style="display:block;font-size:11px;font-weight:700;color:#374151;margin-bottom:5px;">Bank / E-Wallet</label>
+        <select name="manual_refund_bank" id="manualRefundBank"
+          style="width:100%;padding:9px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;outline:none;background:#fff;font-family:inherit;">
+          <option value="">-- Pilih Bank / E-Wallet --</option>
+          <optgroup label="Bank">
+            <option>BCA</option><option>BNI</option><option>BRI</option>
+            <option>Mandiri</option><option>CIMB Niaga</option><option>BSI</option><option>Bank Lainnya</option>
+          </optgroup>
+          <optgroup label="E-Wallet">
+            <option>GoPay</option><option>OVO</option><option>Dana</option><option>ShopeePay</option>
+          </optgroup>
+        </select>
+      </div>
+      <div style="margin-bottom:18px;">
+        <label style="display:block;font-size:11px;font-weight:700;color:#374151;margin-bottom:5px;">Nomor Rekening / E-Wallet</label>
+        <input type="text" name="manual_refund_nomor" id="manualRefundNomor" placeholder="Contoh: 1234567890" inputmode="numeric"
+          style="width:100%;padding:9px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;outline:none;font-family:inherit;">
+      </div>
+
+      <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:10px 12px;font-size:12px;color:#92400e;margin-bottom:16px;">
+        &#x26A0;&#xFE0F; Setelah ditolak dengan opsi refund, transaksi akan muncul di bagian
+        <strong>Pengembalian Dana</strong> dan perlu ditandai selesai setelah transfer.
+      </div>
+    </div>
+
+    <button type="submit" id="btnSubmitTolak"
+      style="width:100%;padding:13px;border:none;border-radius:10px;
+             background:#ef4444;color:#fff;font-size:14px;font-weight:800;
+             cursor:pointer;transition:.18s;"
+      onmouseover="this.style.background='#dc2626'"
+      onmouseout="this.style.background='#ef4444'"
+      onclick="return konfirmasiTolak()">
+      &#x274C; Tolak Pembayaran
+    </button>
+    <button type="button" onclick="tutupModalTolak()"
+      style="width:100%;padding:10px;border:1.5px solid #e5e7eb;border-radius:10px;
+             background:#fff;color:#6b7280;font-size:13px;font-weight:700;
+             cursor:pointer;margin-top:8px;">
+      Batal
+    </button>
+  </form>
+</div>
+
+<script>
+var _tolakHasRefundData = false;
+var _tolakRefundBank = '';
+var _tolakRefundNomor = '';
+var _tolakRefundNama = '';
+
+function bukaModalTolak(id, nama, nominal, hasRefundData, refundBank, refundNomor, refundNama) {
+  _tolakHasRefundData = hasRefundData;
+  _tolakRefundBank    = refundBank;
+  _tolakRefundNomor   = refundNomor;
+  _tolakRefundNama    = refundNama;
+
+  document.getElementById('tolakIdPemesanan').value = id;
+  document.getElementById('modalTolakNama').textContent =
+    nama + ' \u2014 Rp ' + nominal.replace('.', '.');
+  document.getElementById('chkRefund').checked = false;
+  document.getElementById('refundAdminBlock').style.display = 'none';
+  document.getElementById('manualRefundNama').value  = '';
+  document.getElementById('manualRefundBank').value  = '';
+  document.getElementById('manualRefundNomor').value = '';
+  document.getElementById('overlayTolakAdmin').style.display = 'block';
+  document.getElementById('modalTolakAdmin').style.display   = 'block';
+  document.body.style.overflow = 'hidden';
+}
+
+function tutupModalTolak() {
+  document.getElementById('overlayTolakAdmin').style.display = 'none';
+  document.getElementById('modalTolakAdmin').style.display   = 'none';
+  document.body.style.overflow = '';
+}
+
+function toggleRefundAdmin() {
+  var checked = document.getElementById('chkRefund').checked;
+  document.getElementById('refundAdminBlock').style.display = checked ? 'block' : 'none';
+
+  if (checked && _tolakHasRefundData) {
+    var infoDiv  = document.getElementById('infoRekUser');
+    var infoContent = document.getElementById('infoRekContent');
+    infoDiv.style.display = 'block';
+    infoContent.innerHTML =
+      '<strong>Bank:</strong> ' + (_tolakRefundBank  || '-') + '<br>' +
+      '<strong>No. Rek:</strong> ' + (_tolakRefundNomor || '-') + '<br>' +
+      '<strong>a/n:</strong> ' + (_tolakRefundNama  || '-');
+  } else {
+    document.getElementById('infoRekUser').style.display = 'none';
+  }
+}
+
+function konfirmasiTolak() {
+  var chk = document.getElementById('chkRefund').checked;
+  if (chk) {
+    var nama  = document.getElementById('manualRefundNama').value.trim()  || _tolakRefundNama;
+    var bank  = document.getElementById('manualRefundBank').value          || _tolakRefundBank;
+    var nomor = document.getElementById('manualRefundNomor').value.trim() || _tolakRefundNomor;
+    if (!nama || !bank || !nomor) {
+      alert('Lengkapi data rekening untuk refund, atau pastikan pelanggan sudah mengisi data rekening.');
+      return false;
+    }
+    return confirm('Tolak & proses refund ke ' + bank + ' ' + nomor + ' a/n ' + nama + '?');
+  }
+  return confirm('Yakin menolak pembayaran ini? Status akan menjadi Ditolak (tanpa refund).');
+}
+
+document.addEventListener('keydown', function(e) { if (e.key === 'Escape') tutupModalTolak(); });
 </script>
 
 </body>

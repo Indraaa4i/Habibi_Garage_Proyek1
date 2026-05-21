@@ -159,6 +159,23 @@ $q = mysqli_query($conn,
      ORDER BY p.tanggal DESC, p.jam DESC"
 );
 
+/* =========================================================
+   AMBIL BOOKING PENDING (belum upload bukti bayar / menunggu acc admin)
+   ========================================================= */
+$q_pending_acc = mysqli_query($conn,
+    "SELECT p.*, pl.nama_paket, pl.harga
+     FROM pemesanan p
+     JOIN paket_layanan pl ON p.id_paket = pl.id_paket
+     WHERE p.no_telepon = '$no_hp'
+       AND UPPER(REPLACE(p.plat_mobil,' ','')) IN ('$plat_sql_in')
+       AND p.status = 'pending'
+     ORDER BY p.tanggal ASC, p.jam ASC"
+);
+$pending_acc_list = [];
+while ($rpa = mysqli_fetch_assoc($q_pending_acc)) {
+    $pending_acc_list[] = $rpa;
+}
+
 $booking_aktif = null;
 $semua = [];
 
@@ -167,6 +184,7 @@ while ($row = mysqli_fetch_assoc($q)) {
     if (
         !$booking_aktif &&
         $row['status'] !== 'dibatalkan' &&
+        $row['status'] !== 'ditolak' &&
         $row['status_cuci'] !== 'selesai'
     ) {
         $booking_aktif = $row;
@@ -572,6 +590,157 @@ function cuciInfo($status_cuci) {
       .progress-steps { flex-direction: column; }
       .step::after { display: none; }
     }
+
+    /* ── PENDING ACC SECTION ── */
+    .pending-acc-section {
+      background: #fff;
+      border-radius: var(--radius);
+      border-left: 5px solid #f59e0b;
+      box-shadow: var(--shadow);
+      margin-bottom: 28px;
+      overflow: hidden;
+    }
+
+    .pending-acc-header {
+      background: linear-gradient(135deg, #fef3c7, #fffbeb);
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-bottom: 1px solid #fde68a;
+    }
+
+    .pending-acc-icon {
+      font-size: 24px;
+      flex-shrink: 0;
+    }
+
+    .pending-acc-title {
+      font-size: 15px;
+      font-weight: 800;
+      color: #92400e;
+    }
+
+    .pending-acc-subtitle {
+      font-size: 12px;
+      color: #b45309;
+      margin-top: 2px;
+    }
+
+    .pending-acc-badge {
+      margin-left: auto;
+      background: #f59e0b;
+      color: #fff;
+      font-size: 11px;
+      font-weight: 800;
+      padding: 3px 10px;
+      border-radius: 50px;
+      flex-shrink: 0;
+    }
+
+    .pending-acc-list {
+      padding: 16px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .pending-acc-item {
+      background: #fffbeb;
+      border: 1px solid #fde68a;
+      border-radius: 10px;
+      padding: 14px 18px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .pai-left .pai-paket {
+      font-size: 15px;
+      font-weight: 800;
+      color: var(--navy);
+    }
+
+    .pai-left .pai-meta {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 3px;
+    }
+
+    .pai-left .pai-plat {
+      display: inline-block;
+      background: rgba(0,200,224,.12);
+      border: 1px solid var(--cyan);
+      color: var(--navy);
+      font-size: 11px;
+      font-weight: 800;
+      padding: 2px 9px;
+      border-radius: 20px;
+      margin-top: 5px;
+      letter-spacing: .04em;
+    }
+
+    .pai-right {
+      text-align: right;
+      flex-shrink: 0;
+    }
+
+    .pai-harga {
+      font-size: 14px;
+      font-weight: 800;
+      color: var(--navy);
+    }
+
+    .pai-info {
+      font-size: 11px;
+      color: #b45309;
+      background: #fef3c7;
+      border: 1px solid #fde68a;
+      padding: 3px 9px;
+      border-radius: 50px;
+      margin-top: 5px;
+      display: inline-block;
+    }
+
+    .pai-actions {
+      width: 100%;
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+      flex-wrap: wrap;
+    }
+
+    .btn-lanjut-bayar {
+      padding: 7px 14px;
+      border-radius: 8px;
+      background: var(--cyan);
+      color: var(--navy);
+      font-size: 12px;
+      font-weight: 800;
+      border: none;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      transition: .2s;
+    }
+
+    .btn-lanjut-bayar:hover { opacity: .85; }
+
+    .pending-acc-notice {
+      padding: 12px 24px 16px;
+      font-size: 12px;
+      color: #92400e;
+      background: #fffbeb;
+      border-top: 1px solid #fde68a;
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      line-height: 1.6;
+    }
   </style>
 </head>
 <body>
@@ -629,6 +798,78 @@ function cuciInfo($status_cuci) {
       <button type="submit" name="tambah_plat" class="btn-tambah-plat">+ Tambah Plat</button>
     </form>
   </div>
+
+  <!-- PENDING ACC SECTION (booking belum dikonfirmasi admin) -->
+  <?php if (!empty($pending_acc_list)):
+    $belum_bayar_list = array_filter($pending_acc_list, fn($b) => empty($b['bukti_bayar']));
+    $menunggu_konfirmasi_list = array_filter($pending_acc_list, fn($b) => !empty($b['bukti_bayar']));
+    $total_pending = count($pending_acc_list);
+  ?>
+  <div class="pending-acc-section">
+    <div class="pending-acc-header">
+      <div class="pending-acc-icon">&#x23F3;</div>
+      <div>
+        <div class="pending-acc-title">Menunggu Persetujuan Admin</div>
+        <div class="pending-acc-subtitle">
+          <?php if (!empty($menunggu_konfirmasi_list)): ?>
+            Bukti bayar sudah dikirim &mdash; admin akan mengkonfirmasi saat buka
+          <?php else: ?>
+            Booking diterima &mdash; selesaikan pembayaran untuk konfirmasi
+          <?php endif; ?>
+        </div>
+      </div>
+      <span class="pending-acc-badge"><?= $total_pending ?> booking</span>
+    </div>
+
+    <div class="pending-acc-list">
+      <?php foreach ($pending_acc_list as $pb):
+        $sudah_bayar = !empty($pb['bukti_bayar']);
+      ?>
+      <div class="pending-acc-item">
+        <div class="pai-left">
+          <div class="pai-paket"><?= htmlspecialchars($pb['nama_paket']) ?></div>
+          <div class="pai-meta">
+            &#x1F4C5; <?= date('d M Y', strtotime($pb['tanggal'])) ?>
+            &nbsp;&middot;&nbsp;
+            &#x1F550; <?= htmlspecialchars($pb['jam']) ?>
+          </div>
+          <span class="pai-plat"><?= htmlspecialchars(strtoupper($pb['plat_mobil'])) ?></span>
+        </div>
+
+        <div class="pai-right">
+          <div class="pai-harga">Rp <?= number_format($pb['harga'], 0, ',', '.') ?></div>
+          <?php if ($sudah_bayar): ?>
+            <span class="pai-info">&#x1F4E8; Bukti terkirim, menunggu acc admin</span>
+          <?php else: ?>
+            <span class="pai-info">&#x1F4B3; Belum melakukan pembayaran</span>
+          <?php endif; ?>
+        </div>
+
+        <div class="pai-actions">
+          <?php if (!$sudah_bayar): ?>
+            <a href="pembayaran.php?id=<?= $pb['id_pemesanan'] ?>" class="btn-lanjut-bayar">
+              &#x1F4B3; Lanjutkan Pembayaran
+            </a>
+          <?php endif; ?>
+          <form method="POST" onsubmit="return confirm('Yakin ingin membatalkan booking ini?')" style="display:inline;">
+            <input type="hidden" name="id_pemesanan" value="<?= $pb['id_pemesanan'] ?>">
+            <button type="submit" name="batalkan_booking" class="btn-cancel">Batalkan</button>
+          </form>
+        </div>
+      </div>
+      <?php endforeach; ?>
+    </div>
+
+    <div class="pending-acc-notice">
+      <span>&#x2139;&#xFE0F;</span>
+      <span>
+        Jika kamu booking di luar jam operasional (setelah pukul 17.00 atau hari libur),
+        admin akan mengkonfirmasi booking di hari kerja berikutnya saat buka.
+        Booking kamu <strong>sudah tersimpan</strong> dan tidak perlu booking ulang.
+      </span>
+    </div>
+  </div>
+  <?php endif; ?>
 
   <!-- BOOKING AKTIF -->
   <?php if ($booking_aktif):
