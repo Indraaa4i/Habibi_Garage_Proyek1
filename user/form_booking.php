@@ -2,10 +2,24 @@
 session_start();
 include 'koneksi.php'; 
 
+// CLEANUP: hapus baris 'ditolak' yang kadaluarsa (>15 menit, belum upload bukti)
+// Dipanggil di setiap request agar slot yang 'nyangkut' otomatis dibebaskan
+mysqli_query($conn, "DELETE FROM pemesanan
+    WHERE status = 'ditolak'
+      AND bukti_bayar IS NULL
+      AND created_at < NOW() - INTERVAL 15 MINUTE");
+
 // AJAX: ambil slot yang sudah terpesan pada tanggal tertentu
 if(isset($_GET['ajax_slot'])){
     $tgl = mysqli_real_escape_string($conn, $_GET['tgl']);
-    $q = mysqli_query($conn,"SELECT jam FROM pemesanan WHERE tanggal='$tgl'");
+    // Abaikan slot 'ditolak' sementara (bukti_bayar NULL) yang sudah >15 menit (kadaluarsa/putus internet)
+    $q = mysqli_query($conn,
+        "SELECT jam FROM pemesanan
+         WHERE tanggal='$tgl'
+           AND NOT (
+                 status = 'ditolak'
+             AND created_at < NOW() - INTERVAL 15 MINUTE
+           )");
     $rows = [];
     while($r = mysqli_fetch_assoc($q)) $rows[] = $r;
     header('Content-Type: application/json');
@@ -66,9 +80,15 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['proses_booking'])) {
         $plat = strtoupper(mysqli_real_escape_string($conn, $_POST['plat']));
     }
 
-    // Pengecekan jadwal
-    $cek_jadwal = mysqli_query($conn, "SELECT id_pemesanan FROM pemesanan 
-                                      WHERE tanggal = '$tanggal' AND jam = '$jam'");
+    // Pengecekan jadwal:
+    // Abaikan baris 'ditolak' yang sudah lebih dari 15 menit (kadaluarsa/putus internet)
+    $cek_jadwal = mysqli_query($conn,
+        "SELECT id_pemesanan FROM pemesanan
+         WHERE tanggal = '$tanggal' AND jam = '$jam'
+           AND NOT (
+                 status = 'ditolak'
+             AND created_at < NOW() - INTERVAL 15 MINUTE
+           )");
 
     if (mysqli_num_rows($cek_jadwal) > 0) {
         echo "<script>
@@ -77,8 +97,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['proses_booking'])) {
               </script>";
         exit;
     } else {
-        $sql = "INSERT INTO pemesanan (id_paket, nama_pelanggan, plat_mobil, no_telepon, tanggal, jam)
-                VALUES ('$id_paket', '$nama', '$plat', '$telp', '$tanggal', '$jam')";
+        // Status awal: 'ditolak' sementara (bukti_bayar masih NULL), bukan benar-benar ditolak admin
+        // Akan di-UPDATE ke 'pending' oleh pembayaran.php setelah bukti berhasil diupload
+        $sql = "INSERT INTO pemesanan (id_paket, nama_pelanggan, plat_mobil, no_telepon, tanggal, jam, status)
+                VALUES ('$id_paket', '$nama', '$plat', '$telp', '$tanggal', '$jam', 'ditolak')";
 
         if (mysqli_query($conn, $sql)) {
             $id_terakhir = mysqli_insert_id($conn);
