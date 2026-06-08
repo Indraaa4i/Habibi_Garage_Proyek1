@@ -341,7 +341,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['proses_booking'])) {
 
                         <!-- Slot jam -->
                         <div style="border-top:1px solid #dee2e6;padding-top:12px;">
-                            <div style="font-size:12px;font-weight:700;color:#0f1b2d;margin-bottom:8px;">
+                            <div style="font-size:12px;font-weight:700;color:#ffffff;margin-bottom:8px;">
                                 Slot Jam — <span id="labelTanggalSlotUser" style="color:#00c8e0;">pilih tanggal dulu</span>
                             </div>
                             <div id="gridSlotUser" style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;">

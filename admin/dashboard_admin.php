@@ -1736,12 +1736,25 @@ tr:hover td { background: #fafbfc; }
 
     <?php
     $where = "WHERE p.status='lunas'";
-    if(!empty($_GET['bulan']) && !empty($_GET['tahun'])){
-      $bulan = (int)$_GET['bulan'];
-      $tahun = (int)$_GET['tahun'];
-      $where .= " AND MONTH(p.tanggal)='$bulan' AND YEAR(p.tanggal)='$tahun'";
+
+    // Filter tanggal spesifik (prioritas tertinggi)
+    if(!empty($_GET['tanggal'])){
+        $tgl_filter = mysqli_real_escape_string($conn, $_GET['tanggal']);
+        $where .= " AND DATE(p.tanggal)='$tgl_filter'";
+    } else {
+        // Filter bulan (opsional)
+        if(!empty($_GET['bulan'])){
+            $bulan = (int)$_GET['bulan'];
+            $where .= " AND MONTH(p.tanggal)='$bulan'";
+        }
+        // Filter tahun (opsional)
+        if(!empty($_GET['tahun'])){
+            $tahun = (int)$_GET['tahun'];
+            $where .= " AND YEAR(p.tanggal)='$tahun'";
+        }
     }
-    $q_recap = mysqli_query($conn,"SELECT p.*,pl.nama_paket,pl.harga FROM pemesanan p JOIN paket_layanan pl ON p.id_paket=pl.id_paket $where ORDER BY p.tanggal DESC");
+
+    $q_recap = mysqli_query($conn,"SELECT p.*,pl.nama_paket,pl.harga FROM pemesanan p JOIN paket_layanan pl ON p.id_paket=pl.id_paket $where ORDER BY p.tanggal DESC, p.jam ASC");
     $q_total = mysqli_query($conn,"SELECT SUM(pl.harga) as total FROM pemesanan p JOIN paket_layanan pl ON p.id_paket=pl.id_paket $where");
     $total_recap = mysqli_fetch_assoc($q_total)['total'] ?? 0;
     ?>
@@ -1772,36 +1785,118 @@ tr:hover td { background: #fafbfc; }
 
     <!-- Filter -->
     <div class="form-card" style="margin-bottom:22px;">
-      <h3>Filter Rekap</h3>
-      <form method="GET" style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;">
-        <input type="hidden" name="page" value="recap">
-        <div class="form-group" style="margin:0;min-width:160px;">
-          <label class="form-label">Bulan</label>
-          <select name="bulan" class="form-control">
-            <option value="">Semua Bulan</option>
-            <?php for($i=1;$i<=12;$i++): ?>
-            <option value="<?= $i ?>" <?= (isset($_GET['bulan'])&&$_GET['bulan']==$i)?'selected':'' ?>><?= date('F',mktime(0,0,0,$i,1)) ?></option>
-            <?php endfor; ?>
-          </select>
-        </div>
-        <div class="form-group" style="margin:0;min-width:120px;">
-          <label class="form-label">Tahun</label>
-          <select name="tahun" class="form-control">
-            <option value="">Semua Tahun</option>
-            <?php for($y=date('Y');$y>=2023;$y--): ?>
-            <option value="<?= $y ?>" <?= (isset($_GET['tahun'])&&$_GET['tahun']==$y)?'selected':'' ?>><?= $y ?></option>
-            <?php endfor; ?>
-          </select>
-        </div>
-        <button type="submit" class="btn btn-primary" style="align-self:flex-end;">Cari</button>
-      </form>
+      <h3>🔍 Filter Rekap</h3>
+
+      <!-- Tab Filter -->
+      <div style="display:flex;gap:8px;margin-bottom:16px;">
+        <button type="button" onclick="switchFilterTab('tanggal')" id="tabTanggal"
+          style="padding:7px 16px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;border:1.5px solid var(--accent);background:<?= !empty($_GET['tanggal'])?'var(--accent)':'transparent' ?>;color:<?= !empty($_GET['tanggal'])?'white':'var(--accent)' ?>;">
+          📅 Per Tanggal
+        </button>
+        <button type="button" onclick="switchFilterTab('periode')" id="tabPeriode"
+          style="padding:7px 16px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;border:1.5px solid var(--accent);background:<?= empty($_GET['tanggal'])?'var(--accent)':'transparent' ?>;color:<?= empty($_GET['tanggal'])?'white':'var(--accent)' ?>;">
+          📆 Per Bulan / Tahun
+        </button>
+      </div>
+
+      <!-- Filter: Per Tanggal -->
+      <div id="filterTanggalBlock" style="display:<?= !empty($_GET['tanggal'])?'block':'none' ?>;">
+        <form method="GET" style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;">
+          <input type="hidden" name="page" value="recap">
+          <div class="form-group" style="margin:0;min-width:180px;">
+            <label class="form-label">Pilih Tanggal</label>
+            <input type="date" name="tanggal" class="form-control"
+              value="<?= htmlspecialchars($_GET['tanggal'] ?? '') ?>"
+              max="<?= date('Y-m-d') ?>">
+          </div>
+          <button type="submit" class="btn btn-primary" style="align-self:flex-end;">Cari</button>
+          <?php if(!empty($_GET['tanggal'])): ?>
+          <a href="?page=recap" class="btn btn-secondary" style="align-self:flex-end;">Reset</a>
+          <?php endif; ?>
+        </form>
+      </div>
+
+      <!-- Filter: Per Bulan / Tahun -->
+      <div id="filterPeriodeBlock" style="display:<?= empty($_GET['tanggal'])?'block':'none' ?>;">
+        <form method="GET" style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;">
+          <input type="hidden" name="page" value="recap">
+          <div class="form-group" style="margin:0;min-width:160px;">
+            <label class="form-label">Bulan</label>
+            <select name="bulan" class="form-control">
+              <option value="">Semua Bulan</option>
+              <?php for($i=1;$i<=12;$i++): ?>
+              <option value="<?= $i ?>" <?= (isset($_GET['bulan'])&&$_GET['bulan']==$i)?'selected':'' ?>>
+                <?= date('F',mktime(0,0,0,$i,1)) ?>
+              </option>
+              <?php endfor; ?>
+            </select>
+          </div>
+          <div class="form-group" style="margin:0;min-width:120px;">
+            <label class="form-label">Tahun</label>
+            <select name="tahun" class="form-control">
+              <option value="">Semua Tahun</option>
+              <?php for($y=date('Y');$y>=2023;$y--): ?>
+              <option value="<?= $y ?>" <?= (isset($_GET['tahun'])&&$_GET['tahun']==$y)?'selected':'' ?>><?= $y ?></option>
+              <?php endfor; ?>
+            </select>
+          </div>
+          <button type="submit" class="btn btn-primary" style="align-self:flex-end;">Cari</button>
+          <?php if(!empty($_GET['bulan']) || !empty($_GET['tahun'])): ?>
+          <a href="?page=recap" class="btn btn-secondary" style="align-self:flex-end;">Reset</a>
+          <?php endif; ?>
+        </form>
+      </div>
+
+      <?php
+      // Label filter aktif
+      $filter_aktif = '';
+      if(!empty($_GET['tanggal'])){
+        $filter_aktif = '📅 Tanggal: ' . date('d F Y', strtotime($_GET['tanggal']));
+      } elseif(!empty($_GET['bulan']) || !empty($_GET['tahun'])){
+        $parts=[];
+        if(!empty($_GET['bulan'])) $parts[]=date('F',mktime(0,0,0,(int)$_GET['bulan'],1));
+        if(!empty($_GET['tahun'])) $parts[]=(int)$_GET['tahun'];
+        $filter_aktif='📆 Periode: '.implode(' ',$parts);
+      }
+      ?>
+      <?php if($filter_aktif): ?>
+      <div style="margin-top:12px;padding:8px 14px;background:#e0f7fe;border-radius:8px;font-size:12px;color:#0369a1;font-weight:600;">
+        Filter aktif: <?= $filter_aktif ?>
+      </div>
+      <?php endif; ?>
     </div>
+
+    <script>
+    function switchFilterTab(tab){
+      var isTanggal = (tab === 'tanggal');
+      document.getElementById('filterTanggalBlock').style.display = isTanggal ? 'block' : 'none';
+      document.getElementById('filterPeriodeBlock').style.display = isTanggal ? 'none' : 'block';
+      document.getElementById('tabTanggal').style.background = isTanggal ? 'var(--accent)' : 'transparent';
+      document.getElementById('tabTanggal').style.color = isTanggal ? 'white' : 'var(--accent)';
+      document.getElementById('tabPeriode').style.background = isTanggal ? 'transparent' : 'var(--accent)';
+      document.getElementById('tabPeriode').style.color = isTanggal ? 'var(--accent)' : 'white';
+    }
+    </script>
 
     <!-- Tabel Recap -->
     <?php
     $recap_rows = [];
     mysqli_data_seek($q_recap,0);
     while($r_tmp=mysqli_fetch_assoc($q_recap)) $recap_rows[]=$r_tmp;
+
+    // Hitung nomor urut harian: per tanggal, urutan ke-berapa transaksi itu
+    // Kita ambil semua transaksi lunas, group by tanggal, dan beri nomor urut per tanggal
+    $q_daily_seq = mysqli_query($conn,"
+        SELECT id_pemesanan,
+               ROW_NUMBER() OVER (PARTITION BY DATE(tanggal) ORDER BY created_at ASC, id_pemesanan ASC) AS no_harian
+        FROM pemesanan WHERE status='lunas'
+    ");
+    $daily_seq_map = [];
+    if($q_daily_seq){
+        while($ds=mysqli_fetch_assoc($q_daily_seq)){
+            $daily_seq_map[$ds['id_pemesanan']] = $ds['no_harian'];
+        }
+    }
     ?>
     <div class="table-wrap">
       <div class="table-head">
@@ -1813,13 +1908,19 @@ tr:hover td { background: #fafbfc; }
       </div>
       <table id="tabelRecap">
         <tr>
-          <th>No</th><th>ID</th><th>Nama Pelanggan</th><th>Telepon</th>
+          <th>No</th><th>ID Harian</th><th>Nama Pelanggan</th><th>Telepon</th>
           <th>Plat</th><th>Paket</th><th>Tanggal</th><th>Jam</th><th>Total (Rp)</th>
         </tr>
-        <?php foreach($recap_rows as $i => $row): ?>
+        <?php foreach($recap_rows as $i => $row):
+          $no_harian = $daily_seq_map[$row['id_pemesanan']] ?? ($i+1);
+        ?>
         <tr>
           <td><?= $i+1 ?></td>
-          <td>#<?= $row['id_pemesanan'] ?></td>
+          <td>
+            <span style="display:inline-block;background:#e0f7fe;color:#0369a1;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:800;">
+              #<?= $no_harian ?>/<?= date('d', strtotime($row['tanggal'])) ?>
+            </span>
+          </td>
           <td><?= htmlspecialchars($row['nama_pelanggan']) ?></td>
           <td><?= htmlspecialchars($row['no_telepon']) ?></td>
           <td><strong><?= htmlspecialchars(strtoupper($row['plat_mobil'])) ?></strong></td>
@@ -1845,23 +1946,39 @@ tr:hover td { background: #fafbfc; }
     function exportExcel(){
       <?php
       $label_filter = '';
-      if(!empty($_GET['bulan'])&&!empty($_GET['tahun'])){
+      if(!empty($_GET['tanggal'])){
+        $label_filter = date('d-m-Y', strtotime($_GET['tanggal']));
+      } elseif(!empty($_GET['bulan'])&&!empty($_GET['tahun'])){
         $label_filter = date('F',mktime(0,0,0,(int)$_GET['bulan'],1)).'_'.(int)$_GET['tahun'];
+      } elseif(!empty($_GET['bulan'])){
+        $label_filter = date('F',mktime(0,0,0,(int)$_GET['bulan'],1));
+      } elseif(!empty($_GET['tahun'])){
+        $label_filter = (int)$_GET['tahun'];
       } else { $label_filter = 'Semua'; }
       ?>
       const namaFile = 'Recap_Habibi_Garage_<?= $label_filter ?>.xlsx';
       const info = [
         ['REKAP PENDAPATAN — HABIBI GARAGE'],
-        ['Periode','<?= !empty($_GET['bulan'])&&!empty($_GET['tahun'])?date('F Y',mktime(0,0,0,(int)$_GET['bulan'],1,(int)$_GET['tahun'])):"Semua Data" ?>'],
+        ['Periode','<?php
+          if(!empty($_GET['tanggal'])) echo date('d F Y',strtotime($_GET['tanggal']));
+          elseif(!empty($_GET['bulan'])||!empty($_GET['tahun'])){
+            $p=[];
+            if(!empty($_GET['bulan'])) $p[]=date('F',mktime(0,0,0,(int)$_GET['bulan'],1));
+            if(!empty($_GET['tahun'])) $p[]=(int)$_GET['tahun'];
+            echo implode(' ',$p);
+          } else echo "Semua Data";
+        ?>'],
         ['Tanggal Export','<?= date('d/m/Y H:i') ?>'],
         ['Total Pendapatan','Rp <?= number_format($total_recap,0,',','.') ?>'],
         [],
-        ['No','ID Pemesanan','Nama Pelanggan','No. Telepon','Plat Mobil','Paket Layanan','Tanggal','Jam','Total (Rp)']
+        ['No','ID Harian','Nama Pelanggan','No. Telepon','Plat Mobil','Paket Layanan','Tanggal','Jam','Total (Rp)']
       ];
       const dataRows = <?php
         $js_rows=[];
         foreach($recap_rows as $i=>$r){
-          $js_rows[]=[$i+1,$r['id_pemesanan'],$r['nama_pelanggan'],$r['no_telepon'],strtoupper($r['plat_mobil']),$r['nama_paket'],date('d-m-Y',strtotime($r['tanggal'])),$r['jam'],(int)$r['harga']];
+          $no_h = $daily_seq_map[$r['id_pemesanan']] ?? ($i+1);
+          $id_harian = '#'.$no_h.'/'.date('d',strtotime($r['tanggal']));
+          $js_rows[]=[$i+1,$id_harian,$r['nama_pelanggan'],$r['no_telepon'],strtoupper($r['plat_mobil']),$r['nama_paket'],date('d-m-Y',strtotime($r['tanggal'])),$r['jam'],(int)$r['harga']];
         }
         echo json_encode($js_rows);
       ?>;
@@ -2437,4 +2554,4 @@ document.addEventListener('keydown', function(e) { if (e.key === 'Escape') tutup
 </script>
 
 </body>
-</html>
+</html> 
